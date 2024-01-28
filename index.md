@@ -13,6 +13,7 @@
 - [R-distribution](https://surecalois.github.io/random_R_stuff/R-distribution.html)
 - [p-value-distribution](https://surecalois.github.io/random_R_stuff/p-value-distribution.html)
 - [Kelly's formula for betting size](https://surecalois.github.io/random_R_stuff/kelly_criterion.html)
+- [standard Young tableau](https://surecalois.github.io/random_R_stuff/young_tableaux.html)
 
 ## [links to more](https://github.com/surecalois/random_R_stuff/tree/gh-pages/docs)
 ## [source](https://github.com/surecalois/surecalois.github.io/tree/main)
