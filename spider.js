@@ -238,8 +238,8 @@ function board_from_html() {
     console.log(board)
 }
 
-var card_img = 'https://raw.githubusercontent.com/GNOME/aisleriot/master/cards/gnomangelo.svg';
-// var card_img = 'gnomangelo.svg';
+//var card_img = 'https://raw.githubusercontent.com/GNOME/aisleriot/master/cards/gnomangelo.svg';
+ var card_img = 'gnomangelo.svg';
 /*[11,3,t] 11-> Q 3-> heart true -> visuable*/
 function make_card(card_data, k) {
     var it;
