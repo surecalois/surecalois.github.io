@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grid of Circles</title>
+  <style>
+        body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .circle {
+      width: 20px; /* Adjust circle size by changing this value */
+      height: 20px; /* Adjust circle size by changing this value */
+      border-radius: 50%;
+      background-color: #009688; /* Adjust circle color by changing this value */
+      margin: 5px; /* Adjust gap size by changing this value */
+      display: inline-block;
+    }
+    .circle2 {
+      width: 20px; /* Adjust circle size by changing this value */
+      height: 20px; /* Adjust circle size by changing this value */
+      border-radius: 50%;
+      background-color: #aaaaaa; /* Adjust circle color by changing this value */
+      margin: 5px; /* Adjust gap size by changing this value */
+      display: inline-block;
+    }
+    .circle3 {
+      width: 20px; /* Adjust circle size by changing this value */
+      height: 20px; /* Adjust circle size by changing this value */
+      border-radius: 50%;
+      background-color: #f1b2b2; /* Adjust circle color by changing this value */
+      margin: 5px; /* Adjust gap size by changing this value */
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div id="gridContainer"></div>
+
+  <script>
+    var N = 7//7
+    var M = 5//5
+    var mat = []
+    for(let i = 0;i<N;i++){
+        var tmp = []
+        for(let j =0;j<M;j++){
+            tmp.push(1)
+        }
+        mat.push(tmp)
+    }
+
+    //mat[0][1] = 0
+    //mat[0][2] = 0
+
+    function my_move(x,y){
+        //mat[y-1][x-1] = 0
+        for (let i = 0; i < y; i++) {
+            for (let j = x-1; j < M; j++) {
+                //console.log([i,j])
+                if(mat[i][j]==1) mat[i][j] = 0
+            }
+        }
+        //console.log(mat)
+        drawCircles(mat)
+    }
+
+    function check(sb){
+        //s = mat.reduce((a,x) => a+x.reduce((b,y) => b+y,0),0)
+        if(mat[N-1][0] == 1 && mat[N-2][0] != 1 && mat[N-1][1] != 1){
+            gridContainer.innerHTML=sb+" win" // s== 1
+        }else if(mat[N-1][0] == 0){
+            gridContainer.innerHTML=sb+" lose" //s == 0
+        }
+    }
+
+    function opponent_move(v){
+        if(v == undefined) v = 2
+        var s = []
+        for(let i = 0;i<N;i++){
+            for(let j =0;j<M;j++){
+                if(mat[i][j]==1 && (i+1 != N || j!=0)){
+                    s.push([j+1,i+1])
+                }
+            }
+        }
+        L = s.length
+        if(L>0){
+            ss = s[Math.round(Math.random()*(L-1))]
+            //console.log(ss)
+            let x = ss[0]
+            let y = ss[1]
+
+            for (let i = 0; i < y; i++) {
+                for (let j = x-1; j < M; j++) {
+                    //console.log([i,j])
+                    if(mat[i][j]==1) mat[i][j] = v
+                }
+            }
+            //console.log(mat)
+            drawCircles(mat)
+        }
+    }
+
+    function opponent_move_g(){
+      var str = JSON.stringify(mat)
+      var k = g.nodes.findIndex(it => it.str == str)
+      if(k == -1){
+        console.log("unfound state!")
+      }else{
+        if(g.nodes[k].value == 1){
+            opponent_move(0)
+            return
+        }
+        if(g.nodes[k].next != undefined){
+          var m = move_gen(str,g.nodes[g.nodes[k].next].str)
+          select_xy(mat,m)
+          var str2 = JSON.stringify(mat)
+          if(str == str2) console.log("something is wrong!"+"I am removing:"+JSON.stringify(m))
+          drawCircles(mat)
+        }else{
+          console.log("I am not moving..")
+          console.log(g.nodes[k])
+        }
+      }
+    }
+
+    // HOW TO EVALUATE THE MOVE OR THE BOARD
+    //minimax
+
+    function select_xy(m,v){ //the x,y starts with 1 not 0.
+      const x = v[0]
+      const y = v[1]
+      for (let i = 0; i < y; i++) {
+            for (let j = x-1; j < M; j++) {
+                //console.log([i,j])
+                if(m[i][j]==1) m[i][j] = 0
+            }
+        }
+      return m
+    }
+
+    function find_moves(m){
+      var s = []
+        for(let i = 0;i<N;i++){
+            for(let j =0;j<M;j++){
+                if(m[i][j]==1){
+                    s.push([j+1,i+1])
+                }
+            }
+        }
+      return s
+    }
+
+    function move_value(mt,m,max_flag){
+      //var max_flag = JSON.parse(JSON.stringify(t))
+      var mat_tmp = JSON.parse(JSON.stringify(mt))
+      mat_tmp = select_xy(mat_tmp,m) // mat_tmp has changed
+      var v = mat_score(mat_tmp)
+      if(v == 0){
+        var s = find_moves(mat_tmp)
+        var ss = s.map(it => move_value(mat_tmp,it,1-max_flag))
+        if(max_flag==0){v = Math.min(...ss)}
+        if(max_flag==1){v = Math.max(...ss)}
+      }
+      return v
+    }
+
+    function mat_score(m){
+      if(m[N-1][0] != 1) return -1 //empty
+      if(m[N-2][0] != 1 & m[N-1][1] != 1 & m[N-1][0] == 1) return 1 //one left
+      return 0
+    }
+
+    
+
+
+function graph_explore(g){
+   // console.log("graph explore started at "+new Date())
+    var ind = g.nodes.findIndex(it => it.visited == 0)
+    var bigN = 100000
+    while(ind!=-1 & bigN-- > 0){
+        g.nodes[ind].visited++
+        var mt = JSON.parse(g.nodes[ind].str)
+        var s = find_moves(mt)
+        for(let i = 0; i< s.length;i++){
+            var mat_tmp = JSON.parse(JSON.stringify(mt))
+            mat_tmp = select_xy(mat_tmp,s[i])
+            var str_tmp = JSON.stringify(mat_tmp)
+            var sind = g.nodes.findIndex(it => it.str == str_tmp)
+            if(sind == -1){
+                g.edges.push([ind,g.nodes.length])
+                g.nodes.push({str:str_tmp,visited:0,rank:mat_tmp.reduce((a,it)=>a+it.reduce((b,jt)=>b+(jt==1?1:0),0),0)})
+            }else{
+                g.edges.push([ind,sind])
+            }
+        }
+        ind = g.nodes.findIndex(it => it.visited == 0)
+    }
+    if(bigN == 0) console.log("too big, nodes exceeds 100000!")
+    return g
+}
+
+function g_value(g,z){//z is the index of the node trying to push value out
+    //if(g.nodes[z].value == 0) return;
+    var edges = g.edges.filter(it => it[1]== z)
+    for(let i = 0; i < edges.length;i++){
+        let val = g.nodes[edges[i][0]].value
+        if(val == undefined || val ==1){
+            val = 1- g.nodes[z].value
+            g.nodes[edges[i][0]].next = z
+        }
+        g.nodes[edges[i][0]].value = val
+    }
+}
+
+function graph_value(g){
+    const ranks = g.nodes.map(it => it.rank)
+    var rank_inds = [...ranks.keys()].sort((a, b) => ranks[a]-ranks[b]);
+    const z = rank_inds[0]
+    g.nodes[z].value = 0
+    g_value(g,z)
+    for(let i = 1; i<rank_inds.length;i++){
+        if(g.nodes[rank_inds[i]].value == 1){
+            g_value(g,rank_inds[i])
+        }
+    }
+
+    //var L = rank_inds[rank_inds.length-1]
+
+    // for(let i = 1;i<L;i++){
+    //     for(let j = 0;j< g.nodes.length;j++){
+    //         var u = g.nodes.findIndex(it => it.rank == i)
+    //         if(u!=-1){
+    //             g_value(g,u)
+    //             g.nodes[u].rank = -g.nodes[u].rank
+    //         }
+    //     }
+    // }
+}
+
+function graph_value0(g){
+    const ranks = g.nodes.map(it => it.rank)
+    var rank_inds = [...ranks.keys()].sort((a, b) => ranks[a]-ranks[b]);
+    const z = rank_inds[0]
+    g.nodes[z].value = 0
+    g_value(g,z)
+    for(let i = 1; i<rank_inds.length;i++){
+            g_value(g,rank_inds[i])
+    }
+}
+
+function addone(mt){
+    const n = mt.length
+    const m = mt[0].length
+    var pos = []
+    for(let j = 0; j<n;j++){
+        for(let i = 0; i<m;i++){
+            var cond = mt[j][i]!=1
+            if(i>0) cond = cond && mt[j][i-1] ==1
+            if(j<(n-1)) cond = cond && mt[j+1][i] == 1
+            if(cond) pos.push([i,j])
+        }
+    }
+    return pos.map(it => {
+        var tmp = JSON.parse(JSON.stringify(mt))
+        tmp[it[1]][it[0]] = 1
+        return tmp
+    })
+}
+
+
+mat2str0 = function(mt){
+    var ys = mt.map(it => it.reduce((a,jt)=>a+jt,0))
+    var str = JSON.stringify(ys)
+    return str
+}
+
+mat2str = function(mt){
+    var ys = mt.map(it => it.reduce((a,jt)=>a+jt,0))
+    var str = JSON.stringify(ys.filter(it => it!=0))
+    return str
+}
+
+xy_a = function(m,L){
+    const x = m[0]
+    const y = m[1]
+    var b = []
+    for(let i = 0; i <L;i++){
+        b[i] = i<y?(x-1):0
+    }
+    return b
+}
+
+dist_one = function(a1,a2){
+    var d = a1.map((it,k) => it - a2[k])
+    var i = 0
+    while(d[i]==0 && i <d.length) i++;
+    i++;
+    while(i<d.length && d[i]==d[i-1])i++;
+    while(d[i]==0 && i <d.length) i++;
+    return i == d.length
+}
+
+
+str2mat = function(str){
+    var ys = JSON.parse(str)
+    var mt = []
+    var ym = Math.max(...ys)
+    for(let i = 0; i<ys.length;i++){
+        var tmp = []
+        for(let j = 0;j<ym;j++){
+            tmp.push(j<ys[i]?1:0)
+        }
+        mt.push(JSON.parse(JSON.stringify(tmp)))
+    }
+    return mt
+}
+
+function build_graph(n,m){
+    var rank_max = n*m
+    var zmt = []
+    for(let i = 0;i<n;i++){
+        var tmp = []
+        for(let j = 0; j<m;j++){
+            tmp.push(0)
+        }
+        zmt.push(tmp)
+    }
+    zmt[n-1][0] = 1
+    var mg = {nodes:[{str:JSON.stringify(zmt),visited:0,rank:1}],edges:[]}
+
+    var ind = mg.nodes.findIndex(it => it.visited == 0)
+    var bigN = 100000
+    while(ind!=-1 & bigN-- > 0){
+        mg.nodes[ind].visited++
+        var mt = JSON.parse(mg.nodes[ind].str)
+        var mt_next = addone(mt)
+        for(let i = 0; i< mt_next.length;i++){
+            mat_tmp = mt_next[i]
+            var str_tmp = JSON.stringify(mat_tmp)
+            var sind = mg.nodes.findIndex(it => it.str == str_tmp)
+            if(sind == -1){
+                //mg.edges.push([ind,mg.nodes.length])
+                mg.edges.push([mg.nodes.length,ind])
+                mg.nodes.push({str:str_tmp,visited:0,
+                    rank:mg.nodes[ind].rank+1,
+                    value:1
+                })
+            }else{
+                //mg.edges.push([ind,sind])
+                mg.edges.push([sind,ind])
+            }
+        }
+        ind = mg.nodes.findIndex(it => it.visited == 0)
+    }
+    if(bigN == 0) console.log("too big, nodes exceeds 100000!")
+    return mg
+}
+
+
+function build_kgraph(n,m){
+    var rank_max = n*m
+    var zmt = []
+    for(let i = 0;i<n;i++){
+        var tmp = []
+        for(let j = 0; j<m;j++){
+            tmp.push(0)
+        }
+        zmt.push(tmp)
+    }
+    zmt[n-1][0] = 1
+    var mg = {nodes:[{str:JSON.stringify(zmt),visited:0,rank:1,value:1}],edges:[]}
+
+    var ind = mg.nodes.findIndex(it => it.visited == 0)
+    var bigN = 100000
+    while(ind!=-1 & bigN-- > 0){
+        mg.nodes[ind].visited++
+        var mt = JSON.parse(mg.nodes[ind].str)
+        var mt_next = addone(mt)
+
+        for(let i = 0; i< mt_next.length;i++){
+            mat_tmp = mt_next[i]
+            var str_tmp = JSON.stringify(mat_tmp)
+            var sind = mg.nodes.findIndex(it => it.str == str_tmp)
+            if(sind == -1){
+                //mg.edges.push([ind,mg.nodes.length])
+                mg.edges.push([mg.nodes.length,ind])
+                mg.nodes.push({str:str_tmp,visited:0,
+                    rank:mg.nodes[ind].rank+1,
+                    value:1-mg.nodes[ind].value
+                })
+            }else{
+                //mg.edges.push([ind,sind])
+                mg.edges.push([sind,ind])
+            }
+        }
+        ind = mg.nodes.findIndex(it => it.visited == 0)
+    }
+    if(bigN == 0) console.log("too big, nodes exceeds 100000!")
+    return mg
+}
+
+function move_gen(str1,str2){
+    var m1 = JSON.parse(str1)
+    var s = find_moves(m1)
+    var ind = -1
+    for(let i =0; i < s.length; i++){
+      var tmp = JSON.parse(str1)
+      select_xy(tmp,s[i])
+      if(str2 == JSON.stringify(tmp)){
+        ind = i
+      }
+    }
+
+    if(ind !=-1){
+      return s[ind]
+    }else{
+      return [0,0]
+    }
+}
+
+function move_gen_g(g){
+  for(let i = 0; i < g.nodes.length;i++){
+    var next = g.nodes[i].next
+    if(next !=undefined){
+      g.nodes[i].move = move_gen(g.nodes[i].str,g.nodes[next].str)
+    }
+  }
+}
+
+node = {str:JSON.stringify(mat),visited:0,rank:mat.reduce((a,it)=>a+it.reduce((b,jt)=>b+(jt==1?1:0),0),0)}
+g = {nodes:[node],edges:[]}
+
+console.log("graph_explore started at "+new Date())
+graph_explore(g)
+console.log("graph_value started at "+new Date())
+graph_value(g) //value 1 means you cannot win at that state 
+console.log("move_gen_g started at "+new Date())
+move_gen_g(g)
+console.log("move_gen_g ened at "+new Date())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    // Function to draw circles on the grid
+    function drawCircles(mat) {
+      const gridContainer = document.getElementById('gridContainer');
+      gridContainer.innerHTML="";
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < M; j++) {
+            const circle = document.createElement('div');
+            circle.dataset.x = j + 1;
+            circle.dataset.y = i+1;
+            if(mat[i][j]==1){
+                circle.classList.add('circle');  
+            }else if(mat[i][j]==0){
+                circle.classList.add('circle2');  
+            }else{
+                circle.classList.add('circle3');
+            }
+            gridContainer.appendChild(circle);
+
+
+        }
+        // Add a line break after each row
+        gridContainer.appendChild(document.createElement('br'));
+      }
+    }
+
+    document.getElementById('gridContainer').addEventListener('click', function (event) {
+      if (event.target.classList.contains('circle')) {
+        const x = parseInt(event.target.dataset.x);
+        const y = parseInt(event.target.dataset.y);
+        //console.log([x,y])
+        
+        my_move(x,y)
+        check("You")
+        opponent_move_g() //opponent_move()
+        check("I")
+        var cur = g.nodes.find(it => it.str == JSON.stringify(mat))
+        console.log("move:"+JSON.stringify(cur.move)+" value: "+cur.value)
+      }
+    });
+
+    // Call the function with desired grid size
+    drawCircles(mat); // You can change these values to set the grid size
+    console.log("move:"+JSON.stringify(g.nodes[0].move)+" value: "+g.nodes[0].value)
+
+
+
+    function glabel(nstr){
+    nstr = nstr.replaceAll("[[",'')
+    nstr = nstr.replaceAll("]]",'')
+    nstr = nstr.replaceAll("],[","\\n")
+    nstr = nstr.replaceAll(","," ")
+    return nstr
+}
+function gid(nstr){
+    nstr = nstr.replaceAll("[",'')
+    nstr = nstr.replaceAll("]",'')
+    nstr = nstr.replaceAll(",",'')
+    return nstr
+}
+
+function convertToDot(graphData) {
+    let dot = "digraph G {\n node[ordering=in];\n";
+    
+    // Add nodes
+    graphData.nodes.forEach((node,k) => {
+        if(node.value == 1){
+            dot += `  ${k} [label="${glabel(node.str)}" color = "red"];\n`;
+        }else{
+            dot += `  ${k} [label="${glabel(node.str)}"];\n`;
+        }
+    });
+    
+    // Add edges
+    graphData.edges.forEach(edge => {
+        dot += `  ${edge[0]} -> ${edge[1]};\n`;
+    });
+    
+    dot += "}";
+    return dot;
+}
+
+
+(function(console){
+
+console.save = function(data, filename){
+
+if(!data) {
+    console.error('Console.save: No data')
+    return;
+}
+
+if(!filename) filename = 'console.json'
+
+if(typeof data === "object"){
+    data = JSON.stringify(data, undefined, 4)
+}
+
+var blob = new Blob([data], {type: 'text/json'}),
+    e    = document.createEvent('MouseEvents'),
+    a    = document.createElement('a')
+
+a.download = filename
+a.href = window.URL.createObjectURL(blob)
+a.dataset.downloadurl =  ['text/json', a.download, a.href].join(':')
+e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+a.dispatchEvent(e)
+}
+})(console)
+
+console.save(JSON.stringify(g),"stone_"+M+"x"+N+".json")
+//console.save(convertToDot(g),"stone_"+M+"x"+N+".dot")
+//key_nodes = g.nodes.filter(it => it.value == 1)
+//drawCircles(JSON.parse(key_nodes[0].str))
+
+  </script>
+</body>
+</html>

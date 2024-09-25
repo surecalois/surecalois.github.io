@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>colorlinz</title>
+  <style>
+    /* .wrapper{
+        display:flex;
+    } */
+    #gridContainer{
+        line-height: 5px;
+        margin: auto;
+    }
+    .selected{
+        opacity: 0.5;
+    }
+    .circle {
+      width: 70px; /* Adjust circle size by changing this value */
+      height: 70px; /* Adjust circle size by changing this value */
+      border-radius: 50%;
+      background-color: #000000; /* Adjust circle color by changing this value */
+      margin: 5px; /* Adjust gap size by changing this value */
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+    <div class="wrapper"><div id="gridContainer"></div></div>
+  
+
+  <script>
+    var N = 8
+    var M = 13
+
+    var base = []
+    var K = 3 //Math.floor(0.1*N*M)
+
+    var colors = [1,2,3,4,5,6,7]
+    for(let i = 0; i< N*M; i++){
+        if(i<K){
+            base[i] = 1+Math.floor(Math.random()*7)
+        }else{
+            base[i] = 0
+        }
+    }
+    var vase = base.sort((a,b) => Math.random()-0.5)
+
+
+    var mat = []
+    for(let i = 0;i<N;i++){
+        var tmp = []
+        for(let j =0;j<M;j++){
+            //tmp.push(1)
+            tmp.push(vase[i*M+j])
+        }
+        mat.push(tmp)
+    }
+
+// Example usage
+// const edges = [[1, 2], [2, 3], [4, 5], [6, 7], [8, 9], [9, 10]];
+// const disconnectedComponents = findDisconnectedComponents(edges);
+// console.log(disconnectedComponents);
+function findDisconnectedComponents(edges) {
+    // Build adjacency list from edges
+    const adjList = {};
+    for (const [u, v] of edges) {
+        if (!adjList[u]) adjList[u] = [];
+        if (!adjList[v]) adjList[v] = [];
+        adjList[u].push(v);
+        adjList[v].push(u); // Assuming undirected graph
+    }
+
+    const visited = new Set();
+    const disconnectedComponents = [];
+
+    // Depth-first search
+    function dfs(node, component) {
+        visited.add(node);
+        component.push(node);
+        if (adjList[node]) {
+            for (const neighbor of adjList[node]) {
+                if (!visited.has(neighbor)) {
+                    dfs(neighbor, component);
+                }
+            }
+        }
+    }
+
+    // Find disconnected components
+    for (const node in adjList) {
+        if (!visited.has(node)) {
+            const component = [];
+            dfs(node, component);
+            disconnectedComponents.push(component);
+        }
+    }
+
+    return disconnectedComponents.filter(it => it.length > 1);
+}
+
+
+function connectedComponentLabeling(image) {
+    let label = 2;
+    var equivalences = [];
+
+    // First pass
+    for (let y = 0; y < image.length; y++) {
+        for (let x = 0; x < image[y].length; x++) {
+            if (image[y][x] > 0) {
+                var neighbors = []; //(x-1,y) (x+1,y) (x,y-1) (x,y+1)
+                if (y > 0 && image[y - 1][x] > 0) {
+                    neighbors.push(image[y - 1][x]);
+                }
+                if (x > 0 && image[y][x - 1] > 0) {
+                    neighbors.push(image[y][x - 1]);
+                }
+                if (x < image[y].length - 1 && image[y][x + 1] > 0) {
+                    neighbors.push(image[y][x + 1]);
+                }
+                if (y < image.length - 1 && image[y + 1][x] > 0) {
+                    neighbors.push(image[y + 1][x]);
+                }
+
+                neighbors = neighbors.filter(it => it > 1)// if minNeighbor is 1, it is value not label
+                if(neighbors.length == 0){
+                    equivalences.push([label,label])
+                    image[y][x] = label++;
+                }else {
+                    const minNeighbor = Math.min(...neighbors);
+                    image[y][x] = minNeighbor; 
+                    for (const neighbor of neighbors) {
+                        if(neighbor > minNeighbor){
+                            equivalences.push([neighbor,minNeighbor])
+                        }
+                    } 
+                }
+            }
+        }
+    }
+    var dc = findDisconnectedComponents(equivalences)
+    //console.log(dc)
+    var equs ={}
+    for(let k = 0; k< dc.length; k++){
+        for(let s = 1; s < dc[k].length;s++){
+            equs[dc[k][s]] = k+1 //dc[k][1]
+        }
+    }
+
+    //console.log(equivalences)
+    // Second pass (resolve equivalences)
+    //var L_free = 1+Object.keys(equs).length
+    for (let y = 0; y < image.length; y++) {
+        for (let x = 0; x < image[y].length; x++) {
+            if (image[y][x] > 0) {
+                let equivalence = image[y][x];
+                // while (equs[equivalence] !== equivalence && equs[equivalence] !== undefined) {
+                //     equivalence = equs[equivalence];
+                // }
+                if(equs[equivalence] !== undefined) {
+                    equivalence = equs[equivalence];
+                }
+                image[y][x] = equivalence;
+            }
+        }
+    }
+    console.log(image)
+    return image;
+}
+
+    function arr_score(arr){
+        var value = 0
+        var max_value = 0
+        var max_start = 0
+        var start = -1
+        for(let i =0; i < arr.length;i++){
+            if(arr[i] > 0){
+                value++;
+                if(start == -1) start = i
+            }else{
+                if(value > max_value){
+                    max_value = value
+                    max_start = start
+                }
+                value = 0;
+                start = -1;
+            }
+        }
+        if(value > max_value){
+            max_value = value
+            max_start = start
+        }
+        return([max_start,max_value])
+    }
+
+    function empty_slot(matx){
+        var xy = []
+        const ylen = matx.length
+        const xlen = matx[0].length
+        for(let i = 0;i<ylen;i++){
+            for(let j = 0; j<xlen;j++){
+                if(matx[i][j] == 0){
+                    xy.push([j,i])
+                }
+            }
+        }
+        return(xy)
+    }
+
+
+    function random_add(mat,k){
+        var sel = empty_slot(mat).sort((a,b) => Math.random()-0.5).slice(0,k)
+        //console.log(sel)
+        for(let i = 0; i< k; i++){
+            mat[sel[i][1]][sel[i][0]] = 1+Math.floor(Math.random()*colors.length)
+            check_five(mat,sel[i][0],sel[i][1])
+        }
+        //current = []
+    }
+
+    function check_five(mat,x,y){
+        var ylen = mat.length
+        var xlen = mat[0].length
+        var xdir = []
+        for(let i = -4; i <=4; i++){
+            if(i != 0){
+                var z = x +i
+                if(z>=0 && z<xlen){
+                    xdir.push([z,y])
+                }
+            }
+        }
+        var ydir = []
+        for(let i = -4; i <=4; i++){
+            if(i != 0){
+                var z = y +i
+                if(z>=0 && z<ylen){
+                    ydir.push([x,z])
+                }
+            }
+        }
+        var ddir = []
+        for(let i = -4; i <=4; i++){
+            if(i != 0){
+                var zy = y +i
+                var zx = x +i
+                if(zx >=0 && zx <xlen && zy>=0 && zy<ylen){
+                    ddir.push([zx,zy])
+                }
+            }
+        }
+        var gdir = []
+        for(let i = -4; i <=4; i++){
+            if(i != 0){
+                var zy = y +i
+                var zx = x -i
+                if(zx >=0 && zx <xlen && zy>=0 && zy<ylen){
+                    gdir.push([zx,zy])
+                }
+            }
+        }
+        var sdir = [xdir,ydir,ddir,gdir]
+        const mxy = mat[y][x]
+        var vss = sdir.map(jt => arr_score(jt.map(it=>mat[it[1]][it[0]] == mxy ? 1:0)))
+
+        for(let i = 0; i < 4;i++){
+            if(vss[i][1] >= 4){
+                mat[y][x] = 0
+                var xys = []
+                for(let j = 0; j <vss[i][1];j++){
+                    xys.push(sdir[i][vss[i][0]+j])
+                }
+                xys.map(it => mat[it[1]][it[0]] = 0)
+            }
+        }
+    }
+
+
+
+class PriorityQueue {
+    constructor() {
+        this.items = [];
+    }
+
+    enqueue(item, priority) {
+        this.items.push({ item, priority });
+        this.items.sort((a, b) => a.priority - b.priority);
+    }
+
+    dequeue() {
+        if (this.isEmpty()) {
+            return null;
+        }
+        return this.items.shift().item;
+    }
+
+    isEmpty() {
+        return this.items.length === 0;
+    }
+}
+
+function dijkstra(nodes, edges, startNode, endNode) {
+    const distance = {};
+    const previous = {};
+    const pq = new PriorityQueue();
+
+    // Initialize distances and previous nodes
+    for (const node of nodes) {
+        distance[node] = node === startNode ? 0 : Infinity;
+        previous[node] = null;
+        pq.enqueue(node, distance[node]);
+    }
+
+    // Dijkstra's algorithm
+    while (!pq.isEmpty()) {
+        const currentNode = pq.dequeue();
+        if (currentNode === endNode) {
+            break; // Reached the destination node
+        }
+        if (currentNode === null || distance[currentNode] === Infinity) {
+            continue; // All remaining nodes are inaccessible from the start node
+        }
+        for (const edge of edges) {
+            if (edge[0] === currentNode) {
+                const neighbor = edge[1];
+                const weight = 1//weights[edge.join(',')];
+                const altDistance = distance[currentNode] + weight;
+                if (altDistance < distance[neighbor]) {
+                    distance[neighbor] = altDistance;
+                    previous[neighbor] = currentNode;
+                    pq.enqueue(neighbor, distance[neighbor]);
+                }
+            }
+            if (edge[1] === currentNode) {
+                const neighbor = edge[0];
+                const weight = 1//weights[edge.join(',')];
+                const altDistance = distance[currentNode] + weight;
+                if (altDistance < distance[neighbor]) {
+                    distance[neighbor] = altDistance;
+                    previous[neighbor] = currentNode;
+                    pq.enqueue(neighbor, distance[neighbor]);
+                }
+            }
+        }
+    }
+
+    // Reconstruct the shortest path
+    const shortestPath = [];
+    let currentNode = endNode;
+    while (currentNode !== null) {
+        shortestPath.unshift(currentNode);
+        currentNode = previous[currentNode];
+    }
+
+    return {
+        distance: distance[endNode],
+        path: shortestPath
+    };
+}
+
+
+function matrix2graph_str(image){
+    var edges = []
+    var nodes = []
+    for (let y = 0; y < image.length; y++) {
+        for (let x = 0; x < image[0].length; x++) {
+            if (image[y][x] > 0) {
+                var neighbors = []; //(x-1,y) (x+1,y) (x,y-1) (x,y+1)
+                if (y > 0 && image[y - 1][x] > 0) {
+                    neighbors.push([[x,y-1].join(","),[x,y].join(",")]);
+                }
+                if (x > 0 && image[y][x - 1] > 0) {
+                    neighbors.push([[x-1,y].join(","),[x,y].join(",")]);
+                }
+                
+                neighbors.forEach(it => edges.push(it))
+                nodes.push([x,y].join(","))
+            }
+        }
+    }
+    return({edges:edges, nodes:nodes})
+}
+
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function show_path(p){
+    if(p.distance !== Infinity){
+        let pmat = JSON.parse(JSON.stringify(mat))
+        let ps = p.path.map(it => it.split(",").map(jt => parseInt(jt)))
+        let tmp = pmat[ps[0][1]][ps[0][0]]
+        pmat[ps[0][1]][ps[0][0]] = 0
+        for(let i = 1; i< ps.length;i++){
+            pmat[ps[i][1]][ps[i][0]] = tmp // the old value supposed to be 0 anyway.
+            drawCircles(pmat)
+            await sleep(50);
+            pmat[ps[i][1]][ps[i][0]] = 0
+        }
+    }
+}
+
+
+async function is_connected(z,a,b){
+        //var u = connectedComponentLabeling(z)
+        //let flag = u[current[1]][current[0]] == u[target[1]][target[0]]
+
+        g = matrix2graph_str(z)
+        p = dijkstra(g.nodes,g.edges,current.join(","),target.join(","))
+        await show_path(p)
+        let flag = p.distance !== Infinity
+        return(flag)
+    }
+
+ async   function move_piece(a,b){ //current and target are global, you don't need to pass them in actually
+    // console.log("moving")
+    //  console.log(JSON.stringify(current)+"->"+JSON.stringify(target))
+        if(mat[target[1]][target[0]] != 0){
+            current[0] = target[0]
+            current[1] = target[1]
+        }else{
+            var z = mat.map(it => it.map(jt => jt>0?0:1))
+            z[current[1]][current[0]] = 1
+            if(await is_connected(z,current,target)){
+                mat[target[1]][target[0]] = mat[current[1]][current[0]]
+                mat[current[1]][current[0]] = 0
+                check_five(mat,target[0],target[1])
+                if(mat[target[1]][target[0]] > 0){
+                    random_add(mat,3)
+                    //current = []
+                }
+                //current = []
+            }
+            current = []
+        }
+        drawCircles(mat)
+    }
+
+    // Function to draw circles on the grid
+    function drawCircles(mat) {
+      const gridContainer = document.getElementById('gridContainer');
+      gridContainer.innerHTML="";
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < M; j++) {
+            const circle = document.createElement('div');
+            circle.dataset.x = j + 1;
+            circle.dataset.y = i+1;
+            circle.classList.add('circle');
+            if(mat[i][j]<=7){
+                circle.style.backgroundColor = seven_colors[mat[i][j]];
+            }else{
+                circle.style.backgroundColor = "#"+Math.floor(Math.random()*16777215).toString(16);
+            }
+            if(i == current[1] && j == current[0] && mat[i][j]!=0) circle.classList.add('selected');
+            gridContainer.appendChild(circle);
+        }
+        // Add a line break after each row
+        gridContainer.appendChild(document.createElement('br'));
+      }
+    }
+
+    var current = [] // current selected piece
+    var target = []
+    const seven_colors = ["#eeeeee","rgb(230, 20, 20)","rgb(10, 200, 10)","rgb(20, 20, 230)","orange","rgb(20, 230, 230)","magenta","rgb(140, 70, 20)"]
+
+    document.getElementById('gridContainer').addEventListener('click', function (event) {
+      if (event.target.classList.contains('circle')) {
+        const x = parseInt(event.target.dataset.x)-1;
+        const y = parseInt(event.target.dataset.y)-1;
+        //console.log([x,y])
+        if(current.length == 0 && mat[y][x] !=0){
+            current.push(x)
+            current.push(y)
+            
+            //console.log(current)
+            if(mat[current[1]][current[0]]==0){
+                current = []
+            }
+            event.target.classList.add("selected")
+
+        }
+        
+        if(current.length!=0){
+            target = []
+            target.push(x)
+            target.push(y)
+            //console.log(target)
+            move_piece(current,target)
+            //current = []
+        }
+      }
+    });
+
+    // Call the function with desired grid size
+    drawCircles(mat); // You can change these values to set the grid size
+
+  </script>
+</body>
+</html>
