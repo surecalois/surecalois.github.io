@@ -5,7 +5,7 @@
 
 ## Fun stuff
 - [MinSpider](https://surecalois.github.io/spider.html)
-- [colorlinz](https://surecalois.github.io/colorlinz_d.html)
+- [colorlinz](https://surecalois.github.io/colorlinez_d.html)
 - [stone matrix](https://surecalois.github.io/stone_matrix.html)
 
 ## Random R stuff
