@@ -70,12 +70,13 @@
     }
 
     function check(sb){
-        //s = mat.reduce((a,x) => a+x.reduce((b,y) => b+y,0),0)
-        if(mat[N-1][0] == 1 && mat[N-2][0] != 1 && mat[N-1][1] != 1){
+        s = mat.reduce((a,x) => a+x.reduce((b,y) => b+y,0),0)
+        if(s==1){
             gridContainer.innerHTML=sb+" win" // s== 1
-        }else if(mat[N-1][0] == 0){
+        }else if(s==0){
             gridContainer.innerHTML=sb+" lose" //s == 0
         }
+        return s== 0 || s== 1
     }
 
     function opponent_move(v){
@@ -451,13 +452,6 @@ console.log("move_gen_g ened at "+new Date())
 
 
 
-
-
-
-
-
-
-
     
     // Function to draw circles on the grid
     function drawCircles(mat) {
@@ -489,11 +483,14 @@ console.log("move_gen_g ened at "+new Date())
         const x = parseInt(event.target.dataset.x);
         const y = parseInt(event.target.dataset.y);
         //console.log([x,y])
-        
+        var game_over = false
         my_move(x,y)
-        check("You")
-        opponent_move_g() //opponent_move()
-        check("I")
+        game_over = check("You")
+        if(game_over) return
+        opponent_move_g() //the AI moves
+        game_over = check("I")
+        if(game_over) return
+
         var cur = g.nodes.find(it => it.str == JSON.stringify(mat))
         console.log("move:"+JSON.stringify(cur.move)+" value: "+cur.value)
       }
@@ -505,13 +502,14 @@ console.log("move_gen_g ened at "+new Date())
 
 
 
-    function glabel(nstr){
+function glabel(nstr){
     nstr = nstr.replaceAll("[[",'')
     nstr = nstr.replaceAll("]]",'')
     nstr = nstr.replaceAll("],[","\\n")
     nstr = nstr.replaceAll(","," ")
     return nstr
 }
+
 function gid(nstr){
     nstr = nstr.replaceAll("[",'')
     nstr = nstr.replaceAll("]",'')
@@ -568,7 +566,7 @@ a.dispatchEvent(e)
 }
 })(console)
 
-console.save(JSON.stringify(g),"stone_"+M+"x"+N+".json")
+//console.save(JSON.stringify(g),"stone_"+M+"x"+N+".json")
 //console.save(convertToDot(g),"stone_"+M+"x"+N+".dot")
 //key_nodes = g.nodes.filter(it => it.value == 1)
 //drawCircles(JSON.parse(key_nodes[0].str))
