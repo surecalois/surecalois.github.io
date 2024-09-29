@@ -488,19 +488,24 @@ console.log("move_gen_g ened at "+new Date())
       }
     }
 
-    document.getElementById('gridContainer').addEventListener('click', function (event) {
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    document.getElementById('gridContainer').addEventListener('click', async function (event) {
       if (event.target.classList.contains('circle')) {
         const x = parseInt(event.target.dataset.x);
         const y = parseInt(event.target.dataset.y);
         //console.log([x,y])
         var game_over = false
         my_move(x,y)
-        game_over = check("You")
+        await sleep(500) //this is inside an async function, see there is an async up there
+        game_over = check("You") //You == user, first player
         if(game_over) return
         opponent_move_g() //the AI moves
-        game_over = check("I")
+        await sleep(500)
+        game_over = check("I") // I == the machine, second player
         if(game_over) return
-
         var cur = g.nodes.find(it => it.str == JSON.stringify(mat))
         console.log("move:"+JSON.stringify(cur.move)+" value: "+cur.value)
         drawCircles(mat,cur.move[1]-1,cur.move[0]-1);
