@@ -37,6 +37,14 @@
       margin: 5px; /* Adjust gap size by changing this value */
       display: inline-block;
     }
+    .circle4 {
+      width: 20px; /* Adjust circle size by changing this value */
+      height: 20px; /* Adjust circle size by changing this value */
+      border-radius: 50%;
+      background-color: #0096879f; /* Adjust circle color by changing this value */
+      margin: 5px; /* Adjust gap size by changing this value */
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
@@ -454,7 +462,7 @@ console.log("move_gen_g ened at "+new Date())
 
     
     // Function to draw circles on the grid
-    function drawCircles(mat) {
+    function drawCircles(mat,x=-100,y=-100) {
       const gridContainer = document.getElementById('gridContainer');
       gridContainer.innerHTML="";
       for (let i = 0; i < N; i++) {
@@ -469,8 +477,10 @@ console.log("move_gen_g ened at "+new Date())
             }else{
                 circle.classList.add('circle3');
             }
+            if(x !=-100 && y != -100 && i == x && j == y){
+                circle.classList.add('circle4')
+            }
             gridContainer.appendChild(circle);
-
 
         }
         // Add a line break after each row
@@ -493,13 +503,14 @@ console.log("move_gen_g ened at "+new Date())
 
         var cur = g.nodes.find(it => it.str == JSON.stringify(mat))
         console.log("move:"+JSON.stringify(cur.move)+" value: "+cur.value)
+        drawCircles(mat,cur.move[1]-1,cur.move[0]-1);
       }
     });
 
     // Call the function with desired grid size
-    drawCircles(mat); // You can change these values to set the grid size
+     // You can change these values to set the grid size'
     console.log("move:"+JSON.stringify(g.nodes[0].move)+" value: "+g.nodes[0].value)
-
+    drawCircles(mat,g.nodes[0].move[1]-1,g.nodes[0].move[0]-1);
 
 
 function glabel(nstr){
