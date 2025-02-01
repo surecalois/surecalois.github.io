@@ -78,11 +78,11 @@
         margin-right: 10px;
     }
 
-    #Controls2 input{
+    #Controls2 select{
       display: block;
       width: 5em;
       border: none;
-      font-size: 1.3em;
+      font-size: 1em;
       color: darkgray;
       margin-left: 3em;
     }
@@ -100,11 +100,32 @@
     <div id="Controls2">
       <table>
         <tr>
-          <td>Row</td><td><input id="row" type="number" oninput="update();"></input></td>
+          <td>Row</td><td>
+            <select name="row" id="row" value="4" onchange="update();">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+            </select>
+          </td>
         </tr>
         <tr>
           <td>Column</td><td>
-            <input id="column"  type="number" oninput="update();"></input></td>
+            <select name="column" id="column" value="4" onchange="update();">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+            </select>
+            </td>
         </tr>
       </table>
     </div>
