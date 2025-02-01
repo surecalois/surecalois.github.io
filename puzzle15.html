@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>15 Puzzle Game</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      margin-top: 5px;
+    }
+    #wraper {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f4f4f4;
+    }
+
+    #game-container {
+      display: grid;
+      grid-template-columns: repeat(4, 100px);
+      grid-template-rows: repeat(4, 100px);
+      gap: 5px;
+    }
+
+    .tile {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      font-weight: bold;
+      background-color: #3498db;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .tile.empty {
+      background-color: transparent;
+      cursor: default;
+    }
+
+    #Controls{
+        position: fixed; 
+        bottom:0%;
+        left: 50%;
+        transform: translate(-50%, 0);
+        }
+
+
+    #Controls button{
+        position: relative;
+        font-size: 1.3em;
+        color: darkgray;
+        padding: 10px;
+        margin-left: 10px;
+        margin-right: 10px;
+        border: none;
+        background-color: transparent;
+    }
+
+    #Controls button:hover{
+        color: black;
+    }
+
+    #Controls2{
+        display: none;
+        color: darkgray;
+        font-size: 1.3em;
+        padding: 10px;
+        margin-left: 10px;
+        margin-right: 10px;
+    }
+
+    #Controls2 input{
+      display: block;
+      width: 5em;
+      border: none;
+      font-size: 1.3em;
+      color: darkgray;
+      margin-left: 3em;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="wraper">
+    <div id="game-container"></div>
+  </div>
+  <div id="Controls">
+    <button onclick="new_game();">New</button>
+    <button onclick="finish();">Finish it for me</button>
+    <button onclick="setup()">Change</button>
+    <div id="Controls2">
+      <table>
+        <tr>
+          <td>Row</td><td><input id="row" type="number" oninput="update();"></input></td>
+        </tr>
+        <tr>
+          <td>Column</td><td>
+            <input id="column"  type="number" oninput="update();"></input></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <script>
+ 
+    let row_num = 4;
+    let col_num = 4;
+    const container = document.getElementById('game-container');
+    const row_it = document.getElementById("row")
+    const col_it = document.getElementById("column")
+
+    let winState = []// Array.from({ length: row_num*col_num-1 }, (_, i) => i + 1).concat(null);
+    let tiles = [] //Array.from({ length: winState.length-1  }, (_, i) => i + 1).concat(null);
+    let states = []
+    // Shuffle the tiles
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function face(value){
+      return value
+    }
+
+    function update(){
+      row_num = Number(row_it.value)
+      row_num = row_num > 2? row_num: 2
+
+      col_num = Number(col_it.value)
+      col_num = col_num > 2? col_num: 2
+      new_game()
+    }
+
+    function createTiles() {
+      container.innerHTML = '';
+      tiles.forEach((value, index) => {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        if (value === null) {
+          tile.classList.add('empty');
+        } else {
+          tile.textContent = face(value);
+          tile.addEventListener('click', () => moveTile(index));
+        }
+        container.appendChild(tile);
+      });
+      console.log(states.length)
+      console.log(tiles)
+      states.push(JSON.parse(JSON.stringify(tiles)))
+    }
+
+
+    function perm_st(arr){
+      const u = arr.map(it => it!=null?it-1:arr.length-1)
+      let flags = arr.map(it => 0)
+      let pst = []
+      let st = 0
+      while(st!=-1){
+        flags[st] = 1
+        let nx = u[st]
+        let tmp = []
+        tmp.push(st)
+        while(nx!=st){
+          tmp.push(nx)
+          flags[nx] = 1
+          nx = u[nx]
+        }
+        pst.push(JSON.parse(JSON.stringify(tmp)))
+        st = flags.findIndex(it => it == 0)
+      }
+      return pst
+    }
+
+    function null_to_end(arr,row,col){
+      let null_pos = arr.findIndex(it => it == null)
+      let np = [Math.floor(null_pos/row),null_pos % row]
+      const step_n = row-np[0]+col-np[1]-2
+      return step_n
+    }
+
+    function cal_win(arr){
+      const ps = perm_st(arr)
+      const s = ps.map(it => (it.length -1) % 2).reduce((a,it)=>(a+it)%2,0)
+      const d = null_to_end(arr,row_num,col_num)
+      return (s+d)%2==0
+    }
+
+    function moveTile(index) {
+      const emptyIndex = tiles.indexOf(null);
+      const validMoves = [index - 1, index + 1, index - col_num, index + col_num];
+
+      if (validMoves.includes(emptyIndex) && isValidMove(index, emptyIndex)) {
+        [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+        createTiles();
+        checkWin();
+      }
+    }
+
+    function isValidMove(index, emptyIndex) {
+      const row = Math.floor(index / col_num);
+      const emptyRow = Math.floor(emptyIndex / col_num);
+
+      // Prevent horizontal wraparound moves
+      if (Math.abs(index - emptyIndex) === 1 && row !== emptyRow) return false;
+
+      return true;
+    }
+
+    function fun(){
+      //alert('Congratulations! You solved the puzzle!'), 100)
+      let tile_thing = document.getElementsByClassName("tile")
+      for(let i=0;i<tile_thing.length;i++){
+        tile_thing[i].style.backgroundColor="#48a860";
+      }
+      //tile_thing.forEach(it => it.style.backgroundColor="#3498db");
+      setTimeout(() => new_game(),3000)
+    }
+
+    function checkWin() {
+      if (tiles.every((value, index) => value === winState[index])) {
+        setTimeout(() => fun(),100);
+      }
+    }
+
+    function new_game(){
+      //console.log("start a new game")
+      winState =  Array.from({ length: row_num*col_num-1 }, (_, i) => i + 1).concat(null);
+      tiles = Array.from({ length: winState.length-1  }, (_, i) => i + 1).concat(null);
+      states = []
+
+      do{
+      shuffle(tiles);
+     // console.log("shuffling...")
+      }while(!cal_win(tiles))
+
+      row_it.value = row_num
+      col_it.value = col_num
+
+      container.style.gridTemplateColumns = `repeat(${col_num}, 100px)`; 
+      container.style.gridTemplateRows =  `repeat(${row_num}, 100px)`; 
+
+      createTiles();
+    }
+    function finish(){
+      console.log("finish the game")
+    }
+    function setup(){
+      let it = document.getElementById("Controls2")
+      if(it.style.display == "block"){
+        it.style.display = "none";
+      }else{
+        it.style.display = "block"
+      };
+      //console.log("confguration")
+    }
+
+
+    new_game()
+    
+  </script>
+</body>
+</html>
