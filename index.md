@@ -7,6 +7,7 @@
 - [MinSpider](https://surecalois.github.io/spider.html)
 - [colorlinz](https://surecalois.github.io/colorlinez_d.html)
 - [stone matrix](https://surecalois.github.io/stone_matrix.html)
+- [puzzle_15](https://surecalois.github.io/puzzle15.html)
 
 ## Random R stuff
 - [multiple_plots](https://surecalois.github.io/random_R_stuff/multiple_plots.html)
