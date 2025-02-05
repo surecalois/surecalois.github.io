@@ -25,7 +25,7 @@
     #game-container {
       display: grid;
       grid-template-columns: repeat(4, 100px);
-      grid-template-rows: repeat(4, 100px);
+      grid-template-rows: repeat(6, 100px);
       gap: 5px;
     }
 
@@ -133,7 +133,7 @@
 
   <script>
  
-    let row_num = 4;
+    let row_num = 6;
     let col_num = 4;
     const container = document.getElementById('game-container');
     const row_it = document.getElementById("row")
@@ -176,9 +176,15 @@
         }
         container.appendChild(tile);
       });
-      console.log(states.length)
+      //console.log(states.length)
       console.log(tiles)
       states.push(JSON.parse(JSON.stringify(tiles)))
+
+      let st = perm_st(tiles)
+      let a = st.reduce((a,it)=>a+it.length-1,0)
+      let b = null_to_end(tiles,row_num,col_num)
+      console.log(`step ${states.length} => ${a}+${b} = ${a+b} -> ${(a+b)%2} mod 2`)
+
     }
 
 
@@ -205,7 +211,7 @@
 
     function null_to_end(arr,row,col){
       let null_pos = arr.findIndex(it => it == null)
-      let np = [Math.floor(null_pos/row),null_pos % row]
+      let np = [Math.floor(null_pos/col),null_pos % col]
       const step_n = row-np[0]+col-np[1]-2
       return step_n
     }
@@ -218,6 +224,7 @@
     }
 
     function moveTile(index) {
+      //console.log(`move index = ${index}`)
       const emptyIndex = tiles.indexOf(null);
       const validMoves = [index - 1, index + 1, index - col_num, index + col_num];
 
@@ -273,9 +280,364 @@
 
       createTiles();
     }
-    function finish(){
-      console.log("finish the game")
+
+    function dist0(p1,p2){
+      let xy1 = [Math.floor(p1/col_num),p1 % col_num]
+      let xy2 = [Math.floor(p2/col_num),p2 % col_num]
+      let ds = xy1.map((it,k)=>Math.abs(it-xy2[k])).reduce((a,it)=>a+it,0)
+      return ds
     }
+
+
+    function pos1_to_pos2_d(from_p,to_p){
+      let cur_rc = [Math.floor(from_p/col_num),from_p % col_num]
+      let rc = [Math.floor(to_p/col_num),to_p % col_num]
+      let dd = rc.map((it,k) => it-cur_rc[k])
+      console.log(dd)
+      let index = []
+      let cur_p = from_p
+      let s = dd[0]>0?1:-1;
+      for(let c =0;c<Math.abs(dd[1]);c++){
+        cur_p = cur_p + s;
+        index.push(cur_p)
+      }
+      s = dd[1]>0?1:-1;
+      for(let r=0;r<Math.abs(dd[0]);r++){
+        cur_p = cur_p + s*col_num;
+        index.push(cur_p)
+      }
+      return index
+    }
+
+
+    function pos1_to_pos2_u(from_p,to_p){
+      let cur_rc = [Math.floor(from_p/col_num),from_p % col_num]
+      let rc = [Math.floor(to_p/col_num),to_p % col_num]
+      let dd = rc.map((it,k) => it-cur_rc[k])
+      console.log(dd)
+      let index = []
+      let cur_p = from_p
+      let s = dd[0]>0?1:-1;
+      for(let r=0;r<Math.abs(dd[0]);r++){
+        cur_p = cur_p + s*col_num;
+        index.push(cur_p)
+      }
+
+      s = dd[1]>0?1:-1;
+      for(let c =0;c<Math.abs(dd[1]);c++){
+        cur_p = cur_p + s;
+        index.push(cur_p)
+      }
+      return index
+    }
+
+    function pos1_to_pos2_r(from_p,to_p){
+      let cur_rc = [Math.floor(from_p/col_num),from_p % col_num]
+      let rc = [Math.floor(to_p/col_num),to_p % col_num]
+      let dd = rc.map((it,k) => it-cur_rc[k])
+      //console.log(dd)
+      let index = []
+      let cur_p = from_p
+
+      let s1 = dd[0]>0?1:-1;
+      let steps = []
+      for(let r=0;r<Math.abs(dd[0]);r++){
+        steps.push(s1*col_num)
+      }
+
+      let s2 = dd[1]>0?1:-1;
+      for(let c =0;c<Math.abs(dd[1]);c++){
+        steps.push(s2)
+      }
+
+      shuffle(steps)
+
+      for(let i =0;i<steps.length;i++){
+        cur_p = cur_p + steps[i];
+        index.push(cur_p)
+      }
+
+      return index
+    }
+
+
+
+    function null2pos(p){
+      let null_pos = tiles.findIndex(it => it == null)
+      let path = pos1_to_pos2_r(null_pos,p)
+      path.forEach(it => moveTile(it))
+    }
+
+
+    function findPath(gridSize, source, sink, obstacles) {
+    const [rows, cols] = gridSize;
+    const [sx, sy] = source;
+    const [dx, dy] = sink;
+    
+    // Convert obstacles to a Set for fast lookup
+    const obstacleSet = new Set(obstacles.map(([x, y]) => `${x},${y}`));
+    
+    // Check if a position is valid
+    function isValid(x, y, visited) {
+        return x >= 0 && x < rows && y >= 0 && y < cols && 
+               !obstacleSet.has(`${x},${y}`) && !visited.has(`${x},${y}`);
+    }
+
+    // Possible movement directions: right, down, left, up
+    const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+
+    // Stack for DFS
+    const stack = [[sx, sy, []]]; 
+    const visited = new Set();
+    visited.add(`${sx},${sy}`);
+
+    while (stack.length > 0) {
+        const [x, y, path] = stack.pop();
+        const newPath = [...path, [x, y]];
+
+        if (x === dx && y === dy) return newPath; // Found the sink
+        
+        for (const [dx, dy] of directions) {
+            const newX = x + dx;
+            const newY = y + dy;
+
+            if (isValid(newX, newY, visited)) {
+                visited.add(`${newX},${newY}`);
+                stack.push([newX, newY, newPath]);
+            }
+        }
+    }
+
+    return null; // No valid path found
+}
+
+
+function null2pos_findpath(p,fixed_list=[]){
+  let null_pos = tiles.findIndex(it => it == null)
+  const gridSize = [row_num, col_num];  // 5x5 grid
+  const source = [Math.floor(null_pos/col_num),null_pos % col_num];
+  const sink = [Math.floor(p/col_num),p % col_num]
+  const obstacles = fixed_list.map(it =>[Math.floor(it/col_num),it % col_num] );
+
+  const path = findPath(gridSize, source, sink, obstacles);
+  if(path!=null){
+    const index = path.map(it => it[0]*col_num+it[1]).splice(1) //the first point is the source
+    index.forEach(it => moveTile(it))
+    return 0
+  }else{
+    return 1
+  }
+}
+
+    function random_step(p){
+      const d = [-1,1,col_num,-col_num]
+      let sel = Math.floor(Math.random() * d.length)
+      let new_p = p + d[sel]
+      let max_k = 100
+      while(new_p <0 | new_p >= tiles.length && max_k-- >0){
+        sel = Math.floor(Math.random() * d.length)
+        new_p = p + d[sel]
+      }
+      //if(new_p <0 | new_p >= tiles.length) console.log("shit!")
+      return new_p
+    }
+
+    function random_step_dr(p){
+      const d = [1,col_num]
+      let sel = Math.floor(Math.random() * d.length)
+      let new_p = p + d[sel]
+      let max_k = 100
+      while(new_p <0 | new_p >= tiles.length && max_k-- >0){
+        sel = Math.floor(Math.random() * d.length)
+        new_p = p + d[sel]
+      }
+      //if(new_p <0 | new_p >= tiles.length) console.log("shit!")
+      return new_p
+    }
+
+
+    function null2pos_fix(p,fixed_pos){
+      let null_pos = tiles.findIndex(it => it == null)
+      let path = pos1_to_pos2_r(null_pos,p)
+      let max_k = 100
+      while(path.findIndex(it=> it == fixed_pos)!=-1 && max_k-- >0){
+        path = pos1_to_pos2_r(null_pos,p)
+       // max_k = max_k-1;
+      }
+      if(path.findIndex(it=> it == fixed_pos)==-1 ){
+        path.forEach(it => moveTile(it))
+      }else{
+        //console.log("no randomized path is found")
+        let mid = random_step(p)//null_pos
+        max_k = 100
+        while(mid == fixed_pos && max_k-- >0){
+          mid = random_step(p)//null_pos
+        }
+        console.log(`randomized fix to ${mid}`)
+        null2pos_fix(mid,fixed_pos)
+        null2pos_fix(p,fixed_pos)
+      }
+    }
+
+
+    function move_x_dir(x,d,fixed = []){
+      //up:d = -col_num, down = col_num, left = -1, right = 1
+      let pos = tiles.findIndex(it => it == x)
+      let new_pos= pos+d;
+      if(new_pos<0 | new_pos >= tiles.length) return
+      let fixed_new = JSON.parse(JSON.stringify(fixed))
+      fixed_new.push(pos)
+      null2pos_findpath(new_pos,fixed_new)
+      moveTile(pos)
+    }
+
+    function pass_fix_check(p,steps,fixed_list){
+      const s = steps.map(it => p+it)
+      //it is not good when s and fixed_list has overlap
+      const no_good = s.map(it=> fixed_list.findIndex(jt=>jt==it)).filter(it=>it!=-1).length > 0
+      return !no_good
+    }
+
+    function x_path2pos(x,p,fixed_list=[]){
+      let pos = tiles.findIndex(it => it == x)
+      const gridSize = [row_num, col_num];  // 5x5 grid
+      const source = [Math.floor(pos/col_num),pos % col_num];
+      const sink = [Math.floor(p/col_num),p % col_num]
+      const obstacles = fixed_list.map(it =>[Math.floor(it/col_num),it % col_num] );
+
+      const path = findPath(gridSize, source, sink, obstacles);
+      const index = path.map(it => it[0]*col_num+it[1]).splice(1);
+      return index
+    }
+
+    function move_x_pos(x,p,fixed_list=[]){
+      let cur_pos = tiles.findIndex(it => it == x)
+      const path_index = x_path2pos(x,p,fixed_list)
+      if(path_index.length>0){
+          let z = 0
+          path_index.forEach(it =>{
+            if(z==0){
+              z = null2pos_findpath(it,[cur_pos,...fixed_list])
+              moveTile(cur_pos)
+              cur_pos = it
+            }
+          })
+        return z
+      }else{
+        return 1
+      }
+    }
+
+
+    function move_x_pos0(x,p){
+      let pos = tiles.findIndex(it => it == x)
+      let cur_rc = [Math.floor(pos/col_num),pos % col_num]
+      let rc = [Math.floor(p/col_num),p % col_num]
+      let dd = rc.map((it,k) => it-cur_rc[k])
+
+      let s1 = dd[0]>0?1:-1;
+      let steps = []
+      for(let r=0;r<Math.abs(dd[0]);r++){
+        steps.push(s1*col_num)
+      }
+
+      let s2 = dd[1]>0?1:-1;
+      for(let c =0;c<Math.abs(dd[1]);c++){
+        steps.push(s2)
+      }
+
+      for(let i =0;i<steps.length;i++){
+        move_x_dir(x,steps[i])
+      }
+    }
+
+
+
+
+    function top_line(s = 1){
+      let fixed=[]
+      for(let i=0;i<s-1;i++){
+        fixed.push(i)
+      }
+      for(let i = 0;i<col_num-2;i++){
+        move_x_pos(s+i,s+i-1,fixed)
+        fixed.push(s+i-1)
+      }
+
+      move_x_pos(s+col_num-1,s-1+col_num-2,fixed)
+      fixed.push(s-1+col_num-2)
+      null2pos_findpath(s-1+2*col_num-1,fixed)
+
+      if(tiles[s-1+col_num-1]==s+col_num-2){
+        let r6 = [s-1+col_num-2,s-1+col_num-1,
+                  s-1+2*col_num-2,s-1+2*col_num-1,
+                  s-1+3*col_num-2,s-1+3*col_num-1,
+                  ]
+        //b,a   a,b
+        //i,x ->w,w 
+        //j,k   
+        rec6_a = [2,0,1,3,5,4,2,3,1,0,2,3,5,4,2,3,5,4,2,0,1,3]
+        rec6_a.forEach(it => moveTile(r6[it]))
+      }else{
+        move_x_pos(s+col_num-2,s-1+2*col_num-2,fixed)
+        fixed.push(s-1+2*col_num-2)
+        null2pos_findpath(s-1+col_num-1,fixed)
+        moveTile(s-1+col_num-2)
+        moveTile(s-1+2*col_num-2)
+      }
+    }
+
+
+
+    function finish(){
+      for(let i = 0;i<row_num-2;i++){
+        top_line(1+i*col_num)
+      }
+      //console.log("finish util the last two rows")
+      let ups = []
+      for(let i =0;i<col_num-2;i++) ups.push((row_num-2)*col_num+1+i)
+      let downs = ups.map(it => it+col_num)
+
+      let fixed = []
+      for(let i = 0;i<(row_num-2)*col_num;i++) fixed.push(i)
+
+
+      downs.forEach((it,k)=>{
+        if(k>=0){//this condition is just for debuging
+         // move_x_pos(it,it+1,fixed)
+          if(tiles[it-1]!=ups[k]){
+            null2pos_findpath(it-1,fixed)
+          }
+          move_x_pos(ups[k],it-1,fixed)
+          if(tiles[ups[k]-1]==it || (tiles[ups[k]-1]==null && tiles[ups[k]]==it )){
+            //console.log("need a swap algorithm")
+            move_x_pos(ups[k],it+1,fixed)
+            move_x_pos(it,ups[k],[it+1,...fixed])
+            null2pos_findpath(it,[ups[k],it+1,...fixed])
+            //do a spin
+            moveTile(it+1)
+            moveTile(ups[k]+1)
+            moveTile(ups[k])
+            
+            move_x_pos(ups[k],it-1,fixed)
+           // console.log("swap is done!")
+          }
+            //console.log("do the right spin")
+            move_x_pos(it,it,[it-1,...fixed])
+            null2pos_findpath(ups[k]-1,[it-1,it,...fixed])
+            //just move the train in
+            moveTile(it-1)
+            moveTile(it)
+            fixed.push(ups[k]-1)
+            fixed.push(it-1)
+        }
+      })
+      move_x_pos(col_num*row_num-1,col_num*row_num-2,fixed)
+      null2pos_findpath(col_num*row_num-1,[col_num*row_num-2,...fixed])
+    }
+
+
+
     function setup(){
       let it = document.getElementById("Controls2")
       if(it.style.display == "block"){
