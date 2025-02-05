@@ -163,7 +163,7 @@
       new_game()
     }
 
-    function createTiles() {
+  function createTiles(log=true) {
       container.innerHTML = '';
       tiles.forEach((value, index) => {
         const tile = document.createElement('div');
@@ -177,14 +177,14 @@
         container.appendChild(tile);
       });
       //console.log(states.length)
-      console.log(tiles)
-      states.push(JSON.parse(JSON.stringify(tiles)))
-
-      let st = perm_st(tiles)
-      let a = st.reduce((a,it)=>a+it.length-1,0)
-      let b = null_to_end(tiles,row_num,col_num)
-      console.log(`step ${states.length} => ${a}+${b} = ${a+b} -> ${(a+b)%2} mod 2`)
-
+      //console.log(tiles)
+      if(log){
+        states.push(JSON.parse(JSON.stringify(tiles)))
+        let st = perm_st(tiles)
+        let a = st.reduce((a,it)=>a+it.length-1,0)
+        let b = null_to_end(tiles,row_num,col_num)
+        console.log(`step ${states.length} => ${a}+${b} = ${a+b} -> ${(a+b)%2} mod 2`)
+      }
     }
 
 
@@ -228,6 +228,8 @@
       const emptyIndex = tiles.indexOf(null);
       const validMoves = [index - 1, index + 1, index - col_num, index + col_num];
 
+      //await sleep(500);
+
       if (validMoves.includes(emptyIndex) && isValidMove(index, emptyIndex)) {
         [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
         createTiles();
@@ -261,7 +263,7 @@
       }
     }
 
-    function new_game(){
+     function new_game(){
       //console.log("start a new game")
       winState =  Array.from({ length: row_num*col_num-1 }, (_, i) => i + 1).concat(null);
       tiles = Array.from({ length: winState.length-1  }, (_, i) => i + 1).concat(null);
@@ -368,8 +370,49 @@
       path.forEach(it => moveTile(it))
     }
 
+function findPath(gridSize, source, sink, obstacles) {
+    const [rows, cols] = gridSize;
+    const [sx, sy] = source;
+    const [dx, dy] = sink;
+    
+    // Convert obstacles to a Set for fast lookup
+    const obstacleSet = new Set(obstacles.map(([x, y]) => `${x},${y}`));
+    
+    // Check if a position is valid
+    function isValid(x, y, visited) {
+        return x >= 0 && x < rows && y >= 0 && y < cols && 
+               !obstacleSet.has(`${x},${y}`) && !visited.has(`${x},${y}`);
+    }
 
-    function findPath(gridSize, source, sink, obstacles) {
+    // Possible movement directions: right, down, left, up
+    const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+
+    // Queue for BFS: stores [x, y, path]
+    const queue = [[sx, sy, []]];
+    const visited = new Set();
+    visited.add(`${sx},${sy}`);
+
+    while (queue.length > 0) {
+        const [x, y, path] = queue.shift(); // Dequeue
+        const newPath = [...path, [x, y]];
+
+        if (x === dx && y === dy) return newPath; // Found the sink
+        
+        for (const [dx, dy] of directions) {
+            const newX = x + dx;
+            const newY = y + dy;
+
+            if (isValid(newX, newY, visited)) {
+                visited.add(`${newX},${newY}`);
+                queue.push([newX, newY, newPath]); // Enqueue
+            }
+        }
+    }
+
+    return null; // No valid path found
+}
+
+function findPath0(gridSize, source, sink, obstacles) {
     const [rows, cols] = gridSize;
     const [sx, sy] = source;
     const [dx, dy] = sink;
@@ -498,7 +541,7 @@ function null2pos_findpath(p,fixed_list=[]){
       return !no_good
     }
 
-    function x_path2pos(x,p,fixed_list=[]){
+ function x_path2pos(x,p,fixed_list=[]){
       let pos = tiles.findIndex(it => it == x)
       const gridSize = [row_num, col_num];  // 5x5 grid
       const source = [Math.floor(pos/col_num),pos % col_num];
@@ -587,9 +630,10 @@ function null2pos_findpath(p,fixed_list=[]){
       }
     }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-
-    function finish(){
+ async  function finish(){
+      let finish_start = states.length
       for(let i = 0;i<row_num-2;i++){
         top_line(1+i*col_num)
       }
@@ -632,6 +676,13 @@ function null2pos_findpath(p,fixed_list=[]){
             fixed.push(it-1)
         }
       })
+      const finish_end = states.length
+      for(let i = finish_start;i<finish_end;i++){
+        tiles = states[i]
+        createTiles(false)
+        await sleep(200)
+      }
+      states.splice(finish_end)
       move_x_pos(col_num*row_num-1,col_num*row_num-2,fixed)
       null2pos_findpath(col_num*row_num-1,[col_num*row_num-2,...fixed])
     }
