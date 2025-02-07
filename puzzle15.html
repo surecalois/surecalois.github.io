@@ -91,7 +91,7 @@
 </head>
 <body>
   <div class="wraper">
-    <div id="game-container"></div>
+    <div id="game-container" onselectstart="return false"></div>
   </div>
   <div id="Controls">
     <button onclick="new_game();">New</button>
@@ -277,8 +277,21 @@
       row_it.value = row_num
       col_it.value = col_num
 
-      container.style.gridTemplateColumns = `repeat(${col_num}, 100px)`; 
-      container.style.gridTemplateRows =  `repeat(${row_num}, 100px)`; 
+      const ww = window.innerWidth;
+      const wh = window.innerHeight;
+      let sz1=sz2=sz = 100;
+      let a = col_num*sz > ww
+      let b = row_num*sz > 0.8*wh
+
+      if(a){
+        sz1 =  Math.round(ww*0.9/col_num)
+      }else if(b){
+        sz2 =  Math.round(wh*0.7/row_num)
+      }
+      sz = Math.min(sz1,sz2,100)
+
+      container.style.gridTemplateColumns = `repeat(${col_num}, ${sz}px)`; 
+      container.style.gridTemplateRows =  `repeat(${row_num}, ${sz}px)`; 
 
       createTiles();
     }
