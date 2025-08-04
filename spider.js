@@ -83,7 +83,7 @@ var game_one = [
 
 
 var game00 = game_four;
-
+var ans0 = [];
 
 const cd_height = 120;
 const cd_width = 80;
@@ -661,6 +661,10 @@ function plspider_loader(pl){
             return [Math.abs(it) & 0xf, suit_map(Math.abs(it) & 0xf0) , it >0]
         })
     })
+    
+    if('answer' in pl){
+        ans0 = pl.answer
+    }
     
     var out ={
         "cards_to_deal": g_cards[0].reverse(),
