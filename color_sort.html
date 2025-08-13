@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Sort Puzzle</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            margin: 20px;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .tube {
+            width: 60px;
+            height: 200px;
+            border: 2px solid #333;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            overflow: hidden;
+            background-color: white;
+            cursor: pointer;
+        }
+        .color-segment {
+            width: 100%;
+            height: 40px;
+            border-radius: 5px;
+            border: 1px solid #333;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Color Sort Puzzle</h1>
+    <p>Click a tube to select, then click another to pour.</p>
+
+    <div class="container" id="gameBoard"></div>
+    <button onclick="resetGame()">Reset Game</button>
+
+    <br><br><br>
+    <div class="container">
+        <table>
+            <tr>
+                <td style="text-align: right">
+                    <label for="n_blocks">Number of blocks for each color:</label>
+                </td>
+                <td>
+                    <input type="number" id="n_blocks" value = "1" min = "1" onchange="number_update()"></input>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right">
+                    <label for="n_colors">Number of colors:</label>
+                </td>
+                <td>
+                    <input type="number" id="n_colors" value = "1" min = "2" onchange="number_update()"></input>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right">
+                    <label for="n_empty">Number of empty tubes:</label>
+                </td>
+                <td>
+                    <input type="number" id="n_empty" value = "1" min = "1" onchange="number_update()"></input>
+                </td>
+            </tr>       
+        </table>
+    </div>
+
+    <script>
+
+    // input: r,g,b in [0,1], out: h in [0,360) and s,v in [0,1]
+function rgb2hsv(r,g,b) {
+  let v=Math.max(r,g,b), c=v-Math.min(r,g,b);
+  let h= c && ((v==r) ? (g-b)/c : ((v==g) ? 2+(b-r)/c : 4+(r-g)/c)); 
+  return [60*(h<0?h+6:h), v&&c/v, v];
+}
+
+// input: h in [0,360] and s,v in [0,1] - output: r,g,b in [0,1]
+function hsv2rgb(h,s,v) 
+{                              
+  let f= (n,k=(n+h/60)%6) => v - v*s*Math.max( Math.min(k,4-k,1), 0);     
+  return [f(5),f(3),f(1)];       
+}
+
+function get_n_color(n){
+    let rgb_f = Array(n).fill([0,0,0])
+    //hues = seq(15, 375, length = n + 1)
+    for(let i = 0;i<n;i++){
+        rgb_f[i] = hsv2rgb(15+360/n*i,0.6,1)
+    }
+    let rgb = rgb_f.map(jt=>[Math.floor(jt[0]*255),Math.floor(jt[1]*255),Math.floor(jt[2]*255)])
+              .map(it => `rgb(${it[0]},${it[1]},${it[2]})`)
+    return rgb
+}
+
+
+
+        // Generate a shuffled stack of colors
+function generateShuffledColors(n_blocks = 5,n_colors = 4,n_empty = 2) {
+
+    //const seven_colors = ["#eeeeee","rgb(230, 20, 20)","rgb(10, 200, 10)","rgb(20, 20, 230)","orange","rgb(20, 230, 230)","magenta","rgb(140, 70, 20)"]
+    //let colors = seven_colors.sort((a,b)=> Math.random() - Math.random()).slice(0,n_colors)
+    //["red", "blue", "green", "yellow",];
+    const colors = get_n_color(n_colors)
+    let colorStack = [];
+
+    colors.forEach(color => {
+        for (let i = 0; i < n_blocks; i++) {
+            colorStack.push(color);
+        }
+    });
+
+    // Shuffle colors randomly
+    // for (let i = colorStack.length - 1; i > 0; i--) {
+    //     let j = Math.floor(Math.random() * (i + 1));
+    //     [colorStack[i], colorStack[j]] = [colorStack[j], colorStack[i]];
+    // }
+
+    colorStack.sort((a,b)=> Math.random() - Math.random())
+
+    // Distribute colors into 4 tubes + 2 empty ones
+    const game = []
+    for(let i = 0;i<n_colors;i++){
+        game.push(colorStack.slice(i*n_blocks, (i+1)*n_blocks))
+    }
+    for(let i = 0;i<n_empty;i++){
+        game.push([])
+    }
+
+    return game
+}
+let n_blocks = 5
+let n_colors = 4
+let n_empty = 2
+
+function number_update(){
+    const blocks = document.getElementById('n_blocks')
+    const colors = document.getElementById('n_colors')
+    const empty_tubes = document.getElementById('n_empty')
+
+    n_blocks = blocks.value
+    n_colors = colors.value
+    n_empty = empty_tubes.value
+
+
+
+    resetGame()
+}
+
+
+// Initialize tubes with shuffled colors
+let tubes = generateShuffledColors(n_blocks,n_colors,n_empty);
+let selectedTube = null; // Track selected tube
+
+// Function to create the game board UI
+function createGameBoard() {
+    let board = document.getElementById("gameBoard");
+    board.innerHTML = ""; // Clear old state
+
+    tubes.forEach((tube, index) => {
+        let tubeDiv = document.createElement("div");
+        tubeDiv.classList.add("tube");
+        tubeDiv.setAttribute("data-index", index);
+        tubeDiv.style.height =(n_blocks*42).toString()+"px"
+
+        // Create colored segments
+        tube.forEach(color => {
+            let segment = document.createElement("div");
+            segment.classList.add("color-segment");
+            segment.style.backgroundColor = color;
+            tubeDiv.appendChild(segment);
+        });
+
+        tubeDiv.addEventListener("click", () => selectTube(index)); // Click event
+        board.appendChild(tubeDiv);
+    });
+}
+
+// Function to handle tube selection & pouring logic
+function selectTube(index) {
+    if (selectedTube === null) {
+        selectedTube = index;
+    } else if(selectedTube == index ){
+            selectedTube = null;
+    }else {
+        pourLiquid(selectedTube, index);
+        selectedTube = null; // Reset selection after pouring
+    }
+}
+
+// Function to pour liquid from one tube to another
+function pourLiquid(fromIndex, toIndex) {
+    let fromTube = tubes[fromIndex];
+    let toTube = tubes[toIndex];
+
+    if (fromTube.length === 0) return; // No liquid to pour
+
+    let colorToPour = fromTube[fromTube.length - 1];
+
+    // Check if we can pour (either empty tube or same color on top)
+    if ((toTube.length === 0 || toTube[toTube.length - 1] === colorToPour )&&toTube.length < n_blocks) {
+        fromTube.pop();
+        toTube.push(colorToPour);
+        createGameBoard(); // Update the UI
+        checkWinCondition();
+    }
+}
+
+// Function to check if all colors are sorted correctly
+function checkWinCondition() {
+    let allSorted = tubes.every(tube => tube.length === 0 || tube.every(color => color === tube[0]));
+
+    if (allSorted) {
+        console.log("🎉 Congratulations! You sorted all colors!")
+        //setTimeout(() => alert("🎉 Congratulations! You sorted all colors!"), 200);
+    }
+}
+
+// Function to reset the game
+function resetGame() {
+    const blocks = document.getElementById('n_blocks')
+    const colors = document.getElementById('n_colors')
+    const empty_tubes = document.getElementById('n_empty')
+
+    blocks.setAttribute("value",n_blocks)
+    colors.setAttribute("value",n_colors)
+    empty_tubes.setAttribute("value",n_empty)
+
+    tubes = generateShuffledColors(n_blocks,n_colors,n_empty);
+    selectedTube = null;
+    createGameBoard();
+
+
+}
+
+// Initialize the game
+resetGame();
+
+    </script>
+
+</body>
+</html>
