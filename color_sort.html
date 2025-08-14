@@ -319,9 +319,9 @@ function load(){
               var fileReader = new FileReader();
               fileReader.onload = function (e) {
                    let sth = JSON.parse(fileReader.result);
-                   n_blocks = sth.ps[0]
-                   n_colors = sth.ps[1]
-                   n_empty  =sth.ps[2]
+                   n_blocks = Number(sth.ps[0])
+                   n_colors = Number(sth.ps[1])
+                   n_empty  =Number(sth.ps[2])
                    colors = get_n_color(n_colors)
                    update_number()
                    tube_history = sth.history
