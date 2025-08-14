@@ -28,6 +28,9 @@
             background-color: white;
             cursor: pointer;
         }
+        .selected{
+            border: 2px dashed #0000ff;
+        }
         .color-segment {
             width: 100%;
             height: 40px;
@@ -35,8 +38,10 @@
             border: 1px solid #333;
         }
         button {
-            margin-top: 20px;
+            margin-top: 13px;
+            border: none;
             padding: 10px;
+            width: 100px;
             font-size: 16px;
             cursor: pointer;
         }
@@ -48,9 +53,12 @@
     <p>Click a tube to select, then click another to pour.</p>
 
     <div class="container" id="gameBoard"></div>
-    <button onclick="resetGame()">Reset Game</button>
-
-    <br><br><br>
+    <button onclick="resetGame()">NEW</button>
+    <button id = "undo" onclick="undo_it()">Undo</button>
+    <button id = "save" onclick="save()">SAVE </button>
+    <button id = "load" onclick="load()">LOAD</button>
+    <input type="file" id="txtfiletoread" style="display:none;"></input>
+    <br>
     <div class="container">
         <table>
             <tr>
@@ -115,14 +123,13 @@ function generateShuffledColors(n_blocks = 5,n_colors = 4,n_empty = 2) {
     //const seven_colors = ["#eeeeee","rgb(230, 20, 20)","rgb(10, 200, 10)","rgb(20, 20, 230)","orange","rgb(20, 230, 230)","magenta","rgb(140, 70, 20)"]
     //let colors = seven_colors.sort((a,b)=> Math.random() - Math.random()).slice(0,n_colors)
     //["red", "blue", "green", "yellow",];
-    const colors = get_n_color(n_colors)
+    //const color_index = //get_n_color(n_colors)
     let colorStack = [];
 
-    colors.forEach(color => {
+    for(let color_index = 0;color_index<n_colors;color_index++)
         for (let i = 0; i < n_blocks; i++) {
-            colorStack.push(color);
+            colorStack.push(color_index);
         }
-    });
 
     // Shuffle colors randomly
     // for (let i = colorStack.length - 1; i > 0; i--) {
@@ -143,31 +150,36 @@ function generateShuffledColors(n_blocks = 5,n_colors = 4,n_empty = 2) {
 
     return game
 }
-let n_blocks = 5
-let n_colors = 4
-let n_empty = 2
+
 
 function number_update(){
     const blocks = document.getElementById('n_blocks')
-    const colors = document.getElementById('n_colors')
+    const ncolors = document.getElementById('n_colors')
     const empty_tubes = document.getElementById('n_empty')
 
     n_blocks = blocks.value
-    n_colors = colors.value
+    n_colors = ncolors.value
     n_empty = empty_tubes.value
 
-
+    colors = get_n_color(n_colors)
 
     resetGame()
 }
 
 
 // Initialize tubes with shuffled colors
-let tubes = generateShuffledColors(n_blocks,n_colors,n_empty);
+let n_blocks = 5
+let n_colors = 4
+let n_empty = 2
+let tube_history = []
 let selectedTube = null; // Track selected tube
+let colors = get_n_color(n_colors)
+let tubes = generateShuffledColors(n_blocks,n_colors,n_empty);
+
 
 // Function to create the game board UI
 function createGameBoard() {
+    
     let board = document.getElementById("gameBoard");
     board.innerHTML = ""; // Clear old state
 
@@ -178,10 +190,10 @@ function createGameBoard() {
         tubeDiv.style.height =(n_blocks*42).toString()+"px"
 
         // Create colored segments
-        tube.forEach(color => {
+        tube.forEach(color_index => {
             let segment = document.createElement("div");
             segment.classList.add("color-segment");
-            segment.style.backgroundColor = color;
+            segment.style.backgroundColor = colors[color_index];
             tubeDiv.appendChild(segment);
         });
 
@@ -192,12 +204,17 @@ function createGameBoard() {
 
 // Function to handle tube selection & pouring logic
 function selectTube(index) {
+    let board = document.getElementById("gameBoard");
+
     if (selectedTube === null) {
         selectedTube = index;
+        board.children[index].classList.add("selected");
     } else if(selectedTube == index ){
-            selectedTube = null;
+        selectedTube = null;
+        board.children[index].classList.remove("selected");
     }else {
         pourLiquid(selectedTube, index);
+        board.children[selectedTube].classList.remove("selected");
         selectedTube = null; // Reset selection after pouring
     }
 }
@@ -213,6 +230,7 @@ function pourLiquid(fromIndex, toIndex) {
 
     // Check if we can pour (either empty tube or same color on top)
     if ((toTube.length === 0 || toTube[toTube.length - 1] === colorToPour )&&toTube.length < n_blocks) {
+        tube_history.push(JSON.parse(JSON.stringify(tubes)))
         fromTube.pop();
         toTube.push(colorToPour);
         createGameBoard(); // Update the UI
@@ -230,22 +248,104 @@ function checkWinCondition() {
     }
 }
 
+function update_number(){
+    const blocks = document.getElementById('n_blocks')
+    const ncolors = document.getElementById('n_colors')
+    const empty_tubes = document.getElementById('n_empty')
+    
+    //n_x are globals
+    blocks.setAttribute("value",n_blocks)
+    ncolors.setAttribute("value",n_colors)
+    empty_tubes.setAttribute("value",n_empty)
+}
+
 // Function to reset the game
 function resetGame() {
-    const blocks = document.getElementById('n_blocks')
-    const colors = document.getElementById('n_colors')
-    const empty_tubes = document.getElementById('n_empty')
-
-    blocks.setAttribute("value",n_blocks)
-    colors.setAttribute("value",n_colors)
-    empty_tubes.setAttribute("value",n_empty)
-
+    update_number()
+    colors = get_n_color(n_colors)
     tubes = generateShuffledColors(n_blocks,n_colors,n_empty);
+    tube_history = []
+    
     selectedTube = null;
     createGameBoard();
-
-
 }
+
+function undo_it(){
+    //console.log("undo_it is called")
+    if(tube_history.length > 0){
+        tubes = tube_history.pop()
+       // console.log(tubes)
+        createGameBoard();
+        selectedTube = null;
+    }
+    //console.log("undo_it call is finished")
+}
+
+function save(){
+    var json_game = JSON.stringify({"current":tubes,"history":tube_history,
+                    "ps":[n_blocks,n_colors,n_empty]})
+
+    var flag = tubes.every(tube => tube.length === 0 || tube.every(color => color === tube[0]));
+
+    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(json_game);
+    var tmp_node = document.createElement('a');
+    tmp_node.setAttribute("href", dataStr);
+    if(flag){
+        tmp_node.setAttribute("download", "colorsort_"+Date.now() + ".json");
+    }else{
+        tmp_node.setAttribute("download", "colorsort_"+Date.now() + "_not_finished.json");
+    }
+    document.body.appendChild(tmp_node); // required for firefox
+    tmp_node.click();
+    tmp_node.remove();
+    document.getElementById("save").blur();
+}
+
+
+function load(){
+    if (window.File && window.FileReader && window.FileList && window.Blob) {
+        var fileSelected = document.getElementById("txtfiletoread");
+        fileSelected.click();
+        fileSelected.addEventListener(
+          "change",
+          function (e) {
+            //Set the extension for the file
+            var fileExtension = /json/;
+            //Get the file object
+            var fileTobeRead = fileSelected.files[0];
+            //Check of the extension match
+            if (fileTobeRead.type.match(fileExtension)) {
+              //Initialize the FileReader object to read the 2file
+              var fileReader = new FileReader();
+              fileReader.onload = function (e) {
+                   let sth = JSON.parse(fileReader.result);
+                   n_blocks = sth.ps[0]
+                   n_colors = sth.ps[1]
+                   n_empty  =sth.ps[2]
+                   colors = get_n_color(n_colors)
+                   update_number()
+                   tube_history = sth.history
+                   tubes = sth.current
+                   createGameBoard();
+                   selectedTube = null;
+              };
+              fileReader.readAsText(fileTobeRead);
+            }
+          },
+          false
+        );
+      } else {
+        alert("Files are not supported");
+      }
+    document.getElementById("load").blur();
+}
+
+document.onkeydown = function(event) {
+    if (event.key === 'z' ||event.key === 'Z'|| event.key=='u'|| event.key=='U') {
+        undo_it()
+      }
+}
+
 
 // Initialize the game
 resetGame();
