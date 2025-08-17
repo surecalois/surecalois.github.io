@@ -88,6 +88,62 @@
         </table>
     </div>
 
+
+    <script>
+        function try_it(){
+            console.log(JSON.stringify(score(tubes)))
+            let all_mvs = list_all_moves(tubes)
+            for(let i = 0;i< all_mvs.length;i++){
+                let nxt = what_is_next(all_mvs[i],tubes)
+                if(nxt.length == 1){
+                    if(all_mvs[i][0]==nxt[0][1] && all_mvs[i][1]==nxt[0][0])
+                        nxt = ["loop-end"]
+                }
+                console.log(JSON.stringify(all_mvs[i])+" -> "+ nxt.map(JSON.stringify).join(" "))
+            }
+            console.log("-------------------------")
+        }
+        function list_all_moves(tubes){
+            let all_moves = []
+            let n_columns = tubes.length
+            for(let i =0;i<n_columns;i++){
+                for( let j = 0;j<n_columns;j++){
+                    if(tubes[i].length>0){
+                        toTube = tubes[j]
+                        colorToPour = tubes[i][tubes[i].length-1]
+                        flag = (toTube.length === 0 || toTube[toTube.length - 1] === colorToPour )&&toTube.length < n_blocks
+                        if(i!=j && flag) all_moves.push([i,j])
+                    }
+                }
+            }
+            //if(logit) console.log(all_moves.reduce((a,it)=> a+JSON.stringify(it)+"\n",""))
+            return(all_moves)
+        }
+        function what_is_next(one_mv,tubes){
+            let cur = JSON.parse(JSON.stringify(tubes))
+            let tmp = cur[one_mv[0]].pop()
+            cur[one_mv[1]].push(tmp)
+            let next_mvs = list_all_moves(cur)
+            return next_mvs//.reduce((a,it)=> a+JSON.stringify(it)+"\t","")
+        }
+        function tube_score(arr){
+            //regardless of the contrain, how many steps or tubes need to sort out one tube.
+            //equal the number of colors +1,unless the bottom of tubes 1 has all the same color.
+            if(arr.length == 0) return 0;
+            let b_color = arr[0];
+            let ii = 0
+            while(ii < arr.length &&  arr[ii] == b_color ) ii++;
+            let unique = [...new Set(arr.slice(ii))];
+            let ans = 1+unique.length
+            return ans
+        }
+        function score(tubes){
+            //let cur_tubes = JSON.parse(JSON.stringify(tubes))
+            let result = tubes.map(it => tube_score(it))
+            return result
+        }
+    </script>
+
     <script>
 
     // input: r,g,b in [0,1], out: h in [0,360) and s,v in [0,1]
@@ -200,6 +256,8 @@ function createGameBoard() {
         tubeDiv.addEventListener("click", () => selectTube(index)); // Click event
         board.appendChild(tubeDiv);
     });
+
+    try_it()
 }
 
 // Function to handle tube selection & pouring logic
@@ -229,9 +287,9 @@ function pourLiquid(fromIndex, toIndex) {
     let colorToPour = fromTube[fromTube.length - 1];
 
     // Check if we can pour (either empty tube or same color on top)
-    if ((toTube.length === 0 || toTube[toTube.length - 1] === colorToPour )&&toTube.length < n_blocks) {
+    while ((toTube.length === 0 || toTube[toTube.length - 1] ===  fromTube[fromTube.length - 1])&&toTube.length < n_blocks) {
         tube_history.push(JSON.parse(JSON.stringify(tubes)))
-        fromTube.pop();
+        colorToPour=fromTube.pop();
         toTube.push(colorToPour);
         createGameBoard(); // Update the UI
         checkWinCondition();
@@ -309,6 +367,7 @@ function load(){
         fileSelected.addEventListener(
           "change",
           function (e) {
+            if(fileSelected.files.length<1) return;
             //Set the extension for the file
             var fileExtension = /json/;
             //Get the file object
@@ -318,6 +377,7 @@ function load(){
               //Initialize the FileReader object to read the 2file
               var fileReader = new FileReader();
               fileReader.onload = function (e) {
+                   //console.log(e)
                    let sth = JSON.parse(fileReader.result);
                    n_blocks = Number(sth.ps[0])
                    n_colors = Number(sth.ps[1])
@@ -351,6 +411,7 @@ document.onkeydown = function(event) {
 resetGame();
 
     </script>
+
 
 </body>
 </html>
