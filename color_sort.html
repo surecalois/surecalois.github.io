@@ -92,17 +92,20 @@
     <script>
         function try_it(){
             console.log(JSON.stringify(score(tubes)))
-            let all_mvs = list_all_moves(tubes)
-            for(let i = 0;i< all_mvs.length;i++){
-                let nxt = what_is_next(all_mvs[i],tubes)
-                if(nxt.length == 1){
-                    if(all_mvs[i][0]==nxt[0][1] && all_mvs[i][1]==nxt[0][0])
-                        nxt = ["loop-end"]
-                }
-                console.log(JSON.stringify(all_mvs[i])+" -> "+ nxt.map(JSON.stringify).join(" "))
-            }
+            // let all_mvs = list_all_moves(tubes)
+            // for(let i = 0;i< all_mvs.length;i++){
+            //     let nxt = what_is_next(all_mvs[i],tubes)
+            //     if(nxt.length == 1){
+            //         if(all_mvs[i][0]==nxt[0][1] && all_mvs[i][1]==nxt[0][0])
+            //             nxt = ["loop-end"]
+            //     }
+            //     console.log(JSON.stringify(all_mvs[i])+" -> "+ nxt.map(JSON.stringify).join(" "))
+            // }
+            n_color_m_empty(tubes)
             console.log("-------------------------")
         }
+
+
         function list_all_moves(tubes){
             let all_moves = []
             let n_columns = tubes.length
@@ -141,6 +144,108 @@
             //let cur_tubes = JSON.parse(JSON.stringify(tubes))
             let result = tubes.map(it => tube_score(it))
             return result
+        }
+
+        function find_colors(this_color,tbs){
+            let pos = []
+            for(let i = 0;i < tbs.length;i++){
+                for(let j = 0; j< tbs[i].length;j++){
+                    if(tbs[i][j] == this_color){
+                        pos.push([i,j])
+                    }
+                }
+            }
+            return pos
+        }
+
+        function ABO_2b(tbs_){
+            if(n_blocks!=2) return;
+            let tbs = JSON.parse(JSON.stringify(tbs_))
+            let s = score(tbs)
+            let ss = s.filter(it => it==2).length
+            let tns = tbs.map(it => it.length)
+            let pos_O = tns.indexOf(0)
+            let pos_a = tns.indexOf(1)
+            let pos_b = tns.indexOf(1,pos_a+1)
+            let mvs = []
+            //console.log(JSON.stringify([pos_a,pos_b,pos_O]))
+            if(tbs[pos_a][0]==tbs[pos_b][0]){
+                let tmp = tbs[pos_b].pop()
+                tbs[pos_a].push(tmp)
+                mvs.push([pos_b,pos_a])
+                let sth = two_layer(tbs) //recursive call
+                if(sth!=0){
+                    mvs = mvs.concat(sth.mvs)
+                    tbs = sth.tbs
+                }
+            }else{
+                let a = find_colors(tbs[pos_a][0],tbs).filter(it => it[0]!=pos_a)
+                if(a[0][1] == 1){
+                    let tmp = tbs[a[0][0]].pop()
+                    tbs[pos_a].push(tmp)
+                    mvs.push([a[0][0],pos_a])
+                }else{
+                    let tmp = tbs[a[0][0]].pop()
+                    tbs[pos_O].push(tmp)
+                    mvs.push([a[0][0],pos_O])
+
+                    tmp = tbs[pos_a].pop()
+                    tbs[a[0][0]].push(tmp)
+                    mvs.push([pos_a,a[0][0]])
+                }
+                let sth = ABO_2b(tbs)
+                mvs = mvs.concat(sth.mvs)
+                tbs = sth.tbs                
+            }
+            return({"mvs":mvs,"tbs":tbs})
+        }
+
+        function two_layer(tubes_top2_){
+            if(n_blocks!=2 || n_empty < 2) 
+                return 1;
+
+            // let bottoms = tubes_top2.map((it,k) => typeof it[0] != 'undefined'?it[0]:-1)
+            // let tops = tubes_top2.map((it,k) => typeof it[1] != 'undefined'?it[1]:-1)
+            // let b_colors = bottoms.reduce(function (acc, curr) {
+            //             return acc[curr] ? ++acc[curr] : acc[curr] = 1, acc
+            //         }, {});
+            let tubes_top2 = JSON.parse(JSON.stringify(tubes_top2_))
+
+            let s = score(tubes_top2)
+            let k = s.indexOf(2) //1 all the same, 0 empty
+            if(k != -1){
+                let e = s.indexOf(0)
+                let mvs = []
+                let tmp = tubes_top2[k].pop()
+                tubes_top2[e].push(tmp)
+                mvs.push([k,e])
+                let sth = ABO_2b(tubes_top2)
+                mvs = mvs.concat(sth.mvs)
+                tubes_top2 = sth.tbs
+                return({"mvs":mvs,"tbs":tubes_top2})
+            }
+
+            return 0
+        }
+
+        function count_color(tb,nc){
+            let cc = Array(nc).fill(0)
+            for(let ii = 0;ii<tb.length;ii++){
+                cc[tb[ii]]++;
+            }
+            return cc
+        }
+        function n_color_m_empty(tbs_){
+            let tbs = JSON.parse(JSON.stringify(tbs_))
+            let nc = [...new Set(tbs.flat())].length
+            let nb = tbs[0].length
+            let cc = tbs.slice(0,nc).map(it => count_color(it,nc))
+            let bb = cc.map(it => it.reduce((a,b)=>b<a?b:a,nb))
+            let st = bb.reduce((a,it,k) => it<a.v?{"v":it,"k":k}:a,{"v":nb+1,"k":-1})
+            let focus_tube = st.k
+            console.log(JSON.stringify(bb))
+
+
         }
     </script>
 
@@ -231,7 +336,9 @@ let tube_history = []
 let selectedTube = null; // Track selected tube
 let colors = get_n_color(n_colors)
 let tubes = generateShuffledColors(n_blocks,n_colors,n_empty);
-
+let ans0 = []
+let keep_moving = true;
+let autoid;
 
 // Function to create the game board UI
 function createGameBoard() {
@@ -326,6 +433,10 @@ function resetGame() {
     
     selectedTube = null;
     createGameBoard();
+
+    let sth = two_layer(tubes)
+    console.log(JSON.stringify(sth))
+    ans0 = sth.mvs
 }
 
 function undo_it(){
@@ -400,10 +511,32 @@ function load(){
     document.getElementById("load").blur();
 }
 
+
+function auto_move(){
+    if(ans0.length == 0){
+        clearInterval(autoid);
+        return 0;
+    }
+    const stp = ans0.shift();
+    pourLiquid(stp[0],stp[1])
+    if(keep_moving){
+        autoid = setInterval(auto_move,250);
+    }
+}
+
+
 document.onkeydown = function(event) {
     if (event.key === 'z' ||event.key === 'Z'|| event.key=='u'|| event.key=='U') {
         undo_it()
       }
+      if(event.key === 'm'||event.key === 'M'){
+        if(keep_moving){
+            auto_move();
+        }else{
+            clearInterval(autoid);
+        }
+        keep_moving = !keep_moving;
+    }
 }
 
 
