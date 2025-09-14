@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Stern Halma</title>
+<!--script src="boards.js"></script-->
+<style>
+  :root{ --dot-size:30px; }
+  html,body{
+    height:100%;
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    background:aliceblue;
+    color:#222;
+    display:flex;
+    flex-direction:column;
+  }
+  #stage-wrap{
+    flex:1;
+    display:flex;
+ }
+  #stage{
+    margin:auto;
+    background:aliceblue;
+    width:100%; 
+    height:98vmin;
+    position:relative;
+    overflow:hidden;
+    /*box-shadow:0 4px 20px rgba(0,0,0,0.1);
+    border:1px solid #ddd;*/
+  }
+  .dot{
+    position:absolute;
+    width:var(--dot-size);height:var(--dot-size);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    /*box-shadow:0 2px 4px rgba(0,0,0,0.25);*/
+    border: 2px solid #555;
+    cursor:default;
+  }
+  .selected{
+            border: 2px dashed #e5e5e5;
+  }
+  .neighbor{
+            border: 2px dashed #555;
+  }
+</style>
+</head>
+<body>
+
+  <div id="stage-wrap">
+    <div id="stage"></div>
+  </div>
+
+<script>
+/* ==== EMBED YOUR JSON HERE ==== */
+const BOARDS = {
+"board_4": [{"xf":0,"yf":0,"b0_coef":0,"b1_coef":0,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":0.5,"yf":0.866,"b0_coef":0,"b1_coef":1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-0.5,"yf":0.866,"b0_coef":-1,"b1_coef":1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-1,"yf":0,"b0_coef":-1,"b1_coef":0,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-0.5,"yf":-0.866,"b0_coef":0,"b1_coef":-1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":0.5,"yf":-0.866,"b0_coef":1,"b1_coef":-1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":1,"yf":0,"b0_coef":1,"b1_coef":0,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":1,"yf":1.7321,"b0_coef":0,"b1_coef":2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":1.5,"yf":0.866,"b0_coef":1,"b1_coef":1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-1,"yf":1.7321,"b0_coef":-2,"b1_coef":2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2.2204e-16,"yf":1.7321,"b0_coef":-1,"b1_coef":2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2,"yf":0,"b0_coef":-2,"b1_coef":0,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-1.5,"yf":0.866,"b0_coef":-2,"b1_coef":1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-1,"yf":-1.7321,"b0_coef":0,"b1_coef":-2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-1.5,"yf":-0.866,"b0_coef":-1,"b1_coef":-1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":1,"yf":-1.7321,"b0_coef":2,"b1_coef":-2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2.2204e-16,"yf":-1.7321,"b0_coef":1,"b1_coef":-2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2,"yf":0,"b0_coef":2,"b1_coef":0,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":1.5,"yf":-0.866,"b0_coef":2,"b1_coef":-1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":1.5,"yf":2.5981,"b0_coef":0,"b1_coef":3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2,"yf":1.7321,"b0_coef":1,"b1_coef":2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2.5,"yf":0.866,"b0_coef":2,"b1_coef":1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-1.5,"yf":2.5981,"b0_coef":-3,"b1_coef":3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-0.5,"yf":2.5981,"b0_coef":-2,"b1_coef":3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":0.5,"yf":2.5981,"b0_coef":-1,"b1_coef":3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-3,"yf":0,"b0_coef":-3,"b1_coef":0,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2.5,"yf":0.866,"b0_coef":-3,"b1_coef":1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2,"yf":1.7321,"b0_coef":-3,"b1_coef":2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-1.5,"yf":-2.5981,"b0_coef":0,"b1_coef":-3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2,"yf":-1.7321,"b0_coef":-1,"b1_coef":-2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2.5,"yf":-0.866,"b0_coef":-2,"b1_coef":-1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":1.5,"yf":-2.5981,"b0_coef":3,"b1_coef":-3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":0.5,"yf":-2.5981,"b0_coef":2,"b1_coef":-3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-0.5,"yf":-2.5981,"b0_coef":1,"b1_coef":-3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":3,"yf":0,"b0_coef":3,"b1_coef":0,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2.5,"yf":-0.866,"b0_coef":3,"b1_coef":-1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2,"yf":-1.7321,"b0_coef":3,"b1_coef":-2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2,"yf":3.4641,"b0_coef":0,"b1_coef":4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2.5,"yf":2.5981,"b0_coef":1,"b1_coef":3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":3,"yf":1.7321,"b0_coef":2,"b1_coef":2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":3.5,"yf":0.866,"b0_coef":3,"b1_coef":1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2,"yf":3.4641,"b0_coef":-4,"b1_coef":4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-1,"yf":3.4641,"b0_coef":-3,"b1_coef":4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":4.4409e-16,"yf":3.4641,"b0_coef":-2,"b1_coef":4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":1,"yf":3.4641,"b0_coef":-1,"b1_coef":4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-4,"yf":0,"b0_coef":-4,"b1_coef":0,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-3.5,"yf":0.866,"b0_coef":-4,"b1_coef":1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-3,"yf":1.7321,"b0_coef":-4,"b1_coef":2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2.5,"yf":2.5981,"b0_coef":-4,"b1_coef":3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2,"yf":-3.4641,"b0_coef":0,"b1_coef":-4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-2.5,"yf":-2.5981,"b0_coef":-1,"b1_coef":-3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-3,"yf":-1.7321,"b0_coef":-2,"b1_coef":-2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-3.5,"yf":-0.866,"b0_coef":-3,"b1_coef":-1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2,"yf":-3.4641,"b0_coef":4,"b1_coef":-4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":1,"yf":-3.4641,"b0_coef":3,"b1_coef":-4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-4.4409e-16,"yf":-3.4641,"b0_coef":2,"b1_coef":-4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":-1,"yf":-3.4641,"b0_coef":1,"b1_coef":-4,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":4,"yf":0,"b0_coef":4,"b1_coef":0,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":3.5,"yf":-0.866,"b0_coef":4,"b1_coef":-1,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":3,"yf":-1.7321,"b0_coef":4,"b1_coef":-2,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":2.5,"yf":-2.5981,"b0_coef":4,"b1_coef":-3,"cc_color":"grey90","hex":"#E5E5E5"},{"xf":6,"yf":3.4641,"b0_coef":4,"b1_coef":4,"cc_color":"yellow","hex":"#FFFF00"},{"xf":8.8818e-16,"yf":6.9282,"b0_coef":-4,"b1_coef":8,"cc_color":"green","hex":"#00FF00"},{"xf":-6,"yf":3.4641,"b0_coef":-8,"b1_coef":4,"cc_color":"blue","hex":"#0000FF"},{"xf":-6,"yf":-3.4641,"b0_coef":-4,"b1_coef":-4,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-8.8818e-16,"yf":-6.9282,"b0_coef":4,"b1_coef":-8,"cc_color":"red","hex":"#FF0000"},{"xf":6,"yf":-3.4641,"b0_coef":8,"b1_coef":-4,"cc_color":"orange","hex":"#FFA500"},{"xf":5.5,"yf":2.5981,"b0_coef":4,"b1_coef":3,"cc_color":"yellow","hex":"#FFFF00"},{"xf":5,"yf":3.4641,"b0_coef":3,"b1_coef":4,"cc_color":"yellow","hex":"#FFFF00"},{"xf":0.5,"yf":6.0622,"b0_coef":-3,"b1_coef":7,"cc_color":"green","hex":"#00FF00"},{"xf":-0.5,"yf":6.0622,"b0_coef":-4,"b1_coef":7,"cc_color":"green","hex":"#00FF00"},{"xf":-5,"yf":3.4641,"b0_coef":-7,"b1_coef":4,"cc_color":"blue","hex":"#0000FF"},{"xf":-5.5,"yf":2.5981,"b0_coef":-7,"b1_coef":3,"cc_color":"blue","hex":"#0000FF"},{"xf":-5.5,"yf":-2.5981,"b0_coef":-4,"b1_coef":-3,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-5,"yf":-3.4641,"b0_coef":-3,"b1_coef":-4,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-0.5,"yf":-6.0622,"b0_coef":3,"b1_coef":-7,"cc_color":"red","hex":"#FF0000"},{"xf":0.5,"yf":-6.0622,"b0_coef":4,"b1_coef":-7,"cc_color":"red","hex":"#FF0000"},{"xf":5,"yf":-3.4641,"b0_coef":7,"b1_coef":-4,"cc_color":"orange","hex":"#FFA500"},{"xf":5.5,"yf":-2.5981,"b0_coef":7,"b1_coef":-3,"cc_color":"orange","hex":"#FFA500"},{"xf":5,"yf":1.7321,"b0_coef":4,"b1_coef":2,"cc_color":"yellow","hex":"#FFFF00"},{"xf":4.5,"yf":2.5981,"b0_coef":3,"b1_coef":3,"cc_color":"yellow","hex":"#FFFF00"},{"xf":4,"yf":3.4641,"b0_coef":2,"b1_coef":4,"cc_color":"yellow","hex":"#FFFF00"},{"xf":1,"yf":5.1962,"b0_coef":-2,"b1_coef":6,"cc_color":"green","hex":"#00FF00"},{"xf":6.6613e-16,"yf":5.1962,"b0_coef":-3,"b1_coef":6,"cc_color":"green","hex":"#00FF00"},{"xf":-1,"yf":5.1962,"b0_coef":-4,"b1_coef":6,"cc_color":"green","hex":"#00FF00"},{"xf":-4,"yf":3.4641,"b0_coef":-6,"b1_coef":4,"cc_color":"blue","hex":"#0000FF"},{"xf":-4.5,"yf":2.5981,"b0_coef":-6,"b1_coef":3,"cc_color":"blue","hex":"#0000FF"},{"xf":-5,"yf":1.7321,"b0_coef":-6,"b1_coef":2,"cc_color":"blue","hex":"#0000FF"},{"xf":-5,"yf":-1.7321,"b0_coef":-4,"b1_coef":-2,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-4.5,"yf":-2.5981,"b0_coef":-3,"b1_coef":-3,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-4,"yf":-3.4641,"b0_coef":-2,"b1_coef":-4,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-1,"yf":-5.1962,"b0_coef":2,"b1_coef":-6,"cc_color":"red","hex":"#FF0000"},{"xf":-6.6613e-16,"yf":-5.1962,"b0_coef":3,"b1_coef":-6,"cc_color":"red","hex":"#FF0000"},{"xf":1,"yf":-5.1962,"b0_coef":4,"b1_coef":-6,"cc_color":"red","hex":"#FF0000"},{"xf":4,"yf":-3.4641,"b0_coef":6,"b1_coef":-4,"cc_color":"orange","hex":"#FFA500"},{"xf":4.5,"yf":-2.5981,"b0_coef":6,"b1_coef":-3,"cc_color":"orange","hex":"#FFA500"},{"xf":5,"yf":-1.7321,"b0_coef":6,"b1_coef":-2,"cc_color":"orange","hex":"#FFA500"},{"xf":4.5,"yf":0.866,"b0_coef":4,"b1_coef":1,"cc_color":"yellow","hex":"#FFFF00"},{"xf":4,"yf":1.7321,"b0_coef":3,"b1_coef":2,"cc_color":"yellow","hex":"#FFFF00"},{"xf":3.5,"yf":2.5981,"b0_coef":2,"b1_coef":3,"cc_color":"yellow","hex":"#FFFF00"},{"xf":3,"yf":3.4641,"b0_coef":1,"b1_coef":4,"cc_color":"yellow","hex":"#FFFF00"},{"xf":1.5,"yf":4.3301,"b0_coef":-1,"b1_coef":5,"cc_color":"green","hex":"#00FF00"},{"xf":0.5,"yf":4.3301,"b0_coef":-2,"b1_coef":5,"cc_color":"green","hex":"#00FF00"},{"xf":-0.5,"yf":4.3301,"b0_coef":-3,"b1_coef":5,"cc_color":"green","hex":"#00FF00"},{"xf":-1.5,"yf":4.3301,"b0_coef":-4,"b1_coef":5,"cc_color":"green","hex":"#00FF00"},{"xf":-3,"yf":3.4641,"b0_coef":-5,"b1_coef":4,"cc_color":"blue","hex":"#0000FF"},{"xf":-3.5,"yf":2.5981,"b0_coef":-5,"b1_coef":3,"cc_color":"blue","hex":"#0000FF"},{"xf":-4,"yf":1.7321,"b0_coef":-5,"b1_coef":2,"cc_color":"blue","hex":"#0000FF"},{"xf":-4.5,"yf":0.866,"b0_coef":-5,"b1_coef":1,"cc_color":"blue","hex":"#0000FF"},{"xf":-4.5,"yf":-0.866,"b0_coef":-4,"b1_coef":-1,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-4,"yf":-1.7321,"b0_coef":-3,"b1_coef":-2,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-3.5,"yf":-2.5981,"b0_coef":-2,"b1_coef":-3,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-3,"yf":-3.4641,"b0_coef":-1,"b1_coef":-4,"cc_color":"magenta","hex":"#FF00FF"},{"xf":-1.5,"yf":-4.3301,"b0_coef":1,"b1_coef":-5,"cc_color":"red","hex":"#FF0000"},{"xf":-0.5,"yf":-4.3301,"b0_coef":2,"b1_coef":-5,"cc_color":"red","hex":"#FF0000"},{"xf":0.5,"yf":-4.3301,"b0_coef":3,"b1_coef":-5,"cc_color":"red","hex":"#FF0000"},{"xf":1.5,"yf":-4.3301,"b0_coef":4,"b1_coef":-5,"cc_color":"red","hex":"#FF0000"},{"xf":3,"yf":-3.4641,"b0_coef":5,"b1_coef":-4,"cc_color":"orange","hex":"#FFA500"},{"xf":3.5,"yf":-2.5981,"b0_coef":5,"b1_coef":-3,"cc_color":"orange","hex":"#FFA500"},{"xf":4,"yf":-1.7321,"b0_coef":5,"b1_coef":-2,"cc_color":"orange","hex":"#FFA500"},{"xf":4.5,"yf":-0.866,"b0_coef":5,"b1_coef":-1,"cc_color":"orange","hex":"#FFA500"}]
+}
+/* ================================= */
+
+let DATA = JSON.parse(JSON.stringify(BOARDS["board_4"]));
+//"board_4", scale 40, size 30
+//"board_5", scale 40, size 30
+//"board_6", scale 40, size 30
+//"board_7", scale 40, size 30
+const b_coef = DATA.map(it => `${it.b0_coef},${it.b1_coef}`)//{"b0_coef":it.b0_coef,"b1_coef":it.b1_coef}))
+const stage = document.getElementById('stage');
+const the_six = [[0,1],[-1,1],[-1,0],[0,-1],[1,-1],[1,0]]
+
+let currentScale = 40//Number(scaleInput.value);
+let dotSize = 30//Number(sizeInput.value);
+
+function dp_to_ind(p){
+    ind = b_coef.indexOf(`${p.b0_coef},${p.b1_coef}`)
+    return ind
+}
+function swap(el1,el2){
+    p1 = JSON.parse(el1.dataset.dp)
+    p2 = JSON.parse(el2.dataset.dp)
+
+    console.log(`${p1.cc_color} from (${p1.b0_coef},${p1.b1_coef}) to (${p2.b0_coef},${p2.b1_coef})`)
+
+    el1.style.background = p2.hex
+    el2.style.background = p1.hex
+
+    tmp = p1.cc_color
+    p1.cc_color = p2.cc_color
+    p2.cc_color = tmp
+
+    tmp = p1.hex
+    p1.hex = p2.hex
+    p2.hex = tmp
+
+    el1.dataset.dp = JSON.stringify(p1)
+    el2.dataset.dp = JSON.stringify(p2)
+
+    ind1 = b_coef.indexOf(`${p1.b0_coef},${p1.b1_coef}`)
+    ind2 = b_coef.indexOf(`${p2.b0_coef},${p2.b1_coef}`)
+    swap_data(ind1,ind2)
+}
+
+
+
+function swap_data(ind1,ind2,d_state = DATA){
+    const p1 = d_state[ind1]
+    const p2 = d_state[ind2]
+
+    tmp = p1.cc_color
+    p1.cc_color = p2.cc_color
+    p2.cc_color = tmp
+
+    tmp = p1.hex
+    p1.hex = p2.hex
+    p2.hex = tmp
+}
+
+function clear_neighbor(){
+    u = document.getElementsByClassName('neighbor')
+    while(u.length>0){
+        u[0].classList.remove("neighbor")
+    }
+}
+
+function find_bridges(p,d_state = DATA){
+    bridges = []
+    for(let ii = 0;ii<6;ii++){
+        it = the_six[ii]
+        kk = 0;
+        nxt = [p.b0_coef,p.b1_coef]
+        while(kk<50){
+            nxt = [it[0]+nxt[0],it[1]+nxt[1]];
+            ind = b_coef.indexOf(`${nxt[0]},${nxt[1]}`);
+            if(ind == -1) break;
+            kk = kk + 1; //how many grey90 are need after the briedge
+            if(d_state[ind].cc_color != "grey90") break;
+        }
+        // console.log(`direction ${it[0]},${it[1]}: kk = ${kk}`)
+        while(ind != -1 && kk > 0){
+            nxt = [it[0]+nxt[0],it[1]+nxt[1]];
+            ind = b_coef.indexOf(`${nxt[0]},${nxt[1]}`);
+            if(ind == -1) break;
+            kk = kk - 1; 
+            if(d_state[ind].cc_color != "grey90") break;
+        }
+        if(ind !=-1 && kk == 0 && d_state[ind].cc_color == "grey90") bridges.push(ind)
+    }
+    return bridges
+}
+
+
+function find_all_levels(p, d_state = DATA, max_depth = 20) {
+    const visited = new Set();
+    const levels = []; // array of arrays, each level’s indices
+    let frontier = find_bridges(p, d_state);
+    const startInd = dp_to_ind(p);
+
+    visited.add(startInd);
+
+    let depth = 1;
+    while (frontier.length > 0 && depth <= max_depth) {
+        levels.push(frontier);
+
+        const nextFrontier = [];
+        for (const b_it of frontier) {
+            if (visited.has(b_it)) continue;
+
+            swap_data(startInd, b_it);
+
+            let bridges = find_bridges(d_state[b_it], d_state);
+            bridges = bridges.filter(it => !visited.has(it));
+
+            nextFrontier.push(...bridges);
+
+            swap_data(b_it, startInd);
+
+            visited.add(b_it);
+        }
+
+        frontier = [...new Set(nextFrontier)];
+        depth++;
+    }
+
+    return levels;
+}
+
+function label_neighbors(cur_div){
+    p = JSON.parse(cur_div.dataset.dp);
+    //console.log(`(${p.b0_coef},${p.b1_coef})`)
+    //neighbors = the_six.map(it => {return{"b0_coef":it[0]+p.b0_coef,"b1_coef":it[1]+p.b1_coef}})
+    neighbors = the_six.map(it => `${it[0]+p.b0_coef},${it[1]+p.b1_coef}`)
+    //console.log(neighbors)
+    inds = neighbors.map(it => b_coef.indexOf(it))
+    //console.log(inds)
+    inds = inds.filter(it => it != -1).filter(jt => DATA[jt].cc_color == "grey90")
+
+    for(const ii of inds){
+        stage.childNodes[ii].classList.add("neighbor")
+    }
+
+    bridge_levels = find_all_levels(p)
+    bridges = bridge_levels.flat()
+    for(const ii of bridges){
+        stage.childNodes[ii].classList.add("neighbor")
+    }
+}
+function click_thing(e){
+        //e.currentTarget.innerHTML = "*";
+        const pre = document.getElementsByClassName("selected");
+        const cur = e.currentTarget
+       if(pre.length>0){
+            if(pre[0] === cur){
+                pre[0].classList.remove("selected");
+                clear_neighbor()
+                return;
+            }
+
+            if(cur.style.background != "rgb(229, 229, 229)"){
+                pre[0].classList.remove("selected");
+                clear_neighbor()
+                cur.classList.add("selected")
+                label_neighbors(cur)
+                return;
+            }
+
+            swap(pre[0],cur)
+            clear_neighbor()
+            pre[0].classList.remove("selected");
+        }else{
+            if(cur.style.background == "rgb(229, 229, 229)"){
+                //empty don't select
+                cur.classList.remove("selected");
+                    return;
+            }
+            cur.classList.add("selected");
+            label_neighbors(cur)
+
+            //the_six.map(it => `${it[0]+p.b0_coef},${it[1]+p.b1_coef}`)
+        }
+        //console.log(cur)
+}
+
+function clearStage(){
+  stage.querySelectorAll('.dot, .grid-line').forEach(n=>n.remove());
+}
+
+function render(){
+  clearStage();
+  const rect = stage.getBoundingClientRect();
+  const cx = rect.width/2, cy = rect.height/2;
+  const fragment = document.createDocumentFragment();
+  for (const p of DATA){
+    const x = cx + (p.xf||0)*currentScale;
+    const y = cy - (p.yf||0)*currentScale;
+    const el = document.createElement('div');
+    el.className='dot';
+    el.style.left = x+'px'; 
+    el.style.top=y+'px';
+    el.style.width=dotSize+'px'; 
+    el.style.height=dotSize+'px';
+    el.style.background = p.hex || '#ccc';
+    el.dataset.dp = JSON.stringify(p);
+    el.addEventListener('click',click_thing,false)
+    fragment.appendChild(el);
+  }
+  stage.appendChild(fragment);
+}
+
+
+window.addEventListener('resize', render);
+
+
+// defaults
+document.documentElement.style.setProperty('--dot-size', dotSize+'px');
+
+render();
+</script>
+</body>
+</html>
