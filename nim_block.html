@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nim Packed Dots Visualization</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:#f8fafc;color:#0f172a}
+  header{padding:12px 20px;display:flex;gap:12px;align-items:center;background:white;box-shadow:0 1px 4px rgba(2,6,23,0.06)}
+  .controls{display:flex;gap:12px;align-items:center}
+  label{font-size:13px;color:#334155}
+  input[type=range]{width:160px}
+  button{background:#0ea5e9;border:none;color:white;padding:6px 12px;border-radius:8px;cursor:pointer}
+  main{padding:20px;display:flex;flex-direction:row;gap:24px;align-items:flex-end;justify-content:center}
+  .piles{display:flex;flex-direction:row;gap:30px;flex-wrap:wrap;justify-content:center;align-items:flex-end}
+  .pile{display:flex;flex-direction:row;align-items:flex-end;gap:6px}
+  .dots{display:grid;grid-auto-flow:row;grid-template-rows:repeat(10,1fr);gap:3px}
+  .dot{width:18px;height:18px;border-radius:50%;background:#0ea5e9;cursor:pointer}
+  .dot.hint{outline:2px solid #4ce90e}
+  .dumy-dot{width:18px;height:18px;border-radius:50%;background:#f8fafc;cursor:pointer}
+  .dot.removed{opacity:0.15;pointer-events:none}
+  .binary{display:flex;flex-direction:column;gap:2px;justify-content:flex-end}
+  .bit{width:18px;height:18px;border:1px solid #94a3b8}
+  .bit.on{background:#0f172a}
+  .bit.preview{outline:2px solid #f59e0b}
+  .overall{display:flex;flex-direction:column;align-items:flex-end;gap:6px;background-color: #d4d4d4;}
+  .label{font-size:12px;color:#64748b}
+</style>
+</head>
+<body>
+<header>
+  <div style="flex:1;font-weight:700">Nim Packed Dots Visualization</div>
+  <div class="controls">
+    <label>Show hint</label>
+    <input id="hint" type="checkbox"/>
+    <label>Piles <span id="numPilesLabel">5</span></label>
+    <input id="numPiles" type="range" min="2" max="9" value="5" />
+    <label>Max Size <span id="pileSizeLabel">57</span></label>
+    <input id="pileSize" type="range" min="1" max="128" value="57" />
+    <button id="regen">Generate</button>
+
+  </div>
+</header>
+<main>
+  <div class="overall">
+    <!--div class="label">Overall Nim-sum</div-->
+    <div class="binary" id="overallBin"></div>
+  </div>
+  <div class="piles" id="piles"></div>
+</main>
+<script>
+let numPiles=5;
+let maxSize=57;
+let row_size = 4;
+let auto_player = null;
+let piles=[];
+
+function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+
+function genPiles(){
+  piles=[];
+  for(let i=0;i<numPiles;i++){
+    piles.push(randInt(1,maxSize));
+  }
+}
+
+function get_hint(arr){
+  const g = arr.reduce((a,b)=>a^b,0);
+  if(g == 0) return []
+  vs = arr.map(it => it^g)
+  uu = vs.map((it,k)=>arr[k]-it).map(jt => jt>0?jt:0)
+  return uu
+}
+
+function js_move(){
+  if(auto_player !== null){
+    clearInterval(auto_player)
+    auto_player = null
+  }
+  if(piles.reduce((a,it)=>a+it,0) == 0) return
+  //let h = get_hint(piles)
+  let p_sel = Math.floor(Math.random()*piles.length)
+  while(piles[p_sel]<=0){
+    p_sel = Math.floor(Math.random()*piles.length)
+  }
+  let c_sel = 1+Math.floor(Math.random()*piles[p_sel])
+  piles[p_sel] = piles[p_sel] -c_sel
+  render()
+}
+
+function pileToBinary(n){
+  let bits=[];
+  let maxBits=7; // up to 128
+  for(let i=maxBits;i>=0;i--){
+    bits.push((n>>i)&1);
+  }
+  return bits;
+}
+
+function nimSum(){
+  return piles.reduce((a,b)=>a^b,0);
+}
+
+function render(){
+  const container=document.getElementById('piles');
+  container.innerHTML='';
+  const sum=nimSum();
+  const show_hint = checkbox.checked;
+  const hint = get_hint(piles)
+
+  // overall nim-sum display
+  const obin=pileToBinary(sum);
+  const overall=document.getElementById('overallBin');
+  overall.innerHTML='';
+  obin.forEach(b=>{
+    const el=document.createElement('div');
+    el.className='bit'+(b?' on':'');
+    overall.appendChild(el);
+  });
+
+  piles.forEach((count,idx)=>{
+    const pileDiv=document.createElement('div');pileDiv.className='pile';
+    // dots grid
+    const dots=document.createElement('div');dots.className='dots';
+    dots.style.gridTemplateRows=`repeat(${Math.ceil(count/row_size)},1fr)`;
+    //dots.style.gridTemplateColumns=`repeat(${Math.min(row_size,count)},1fr)`;
+    dots.style.gridTemplateColumns=`repeat(${row_size},1fr)`;
+    dumy_to_fill = Math.ceil(count/row_size)*row_size - count;
+    for(let i = 0;i<dumy_to_fill;i++){
+      const d=document.createElement('div');d.className='dumy-dot';
+      dots.appendChild(d);
+    }
+    for(let i=0;i<count;i++){
+      const d=document.createElement('div');
+      //console.log([show_hint,count,hint[idx]])
+      if(show_hint && i == count - hint[idx]){
+        d.className='dot hint';
+      }else{
+        d.className='dot';
+      }
+
+      const newCount=i; // if click this, pile becomes newCount
+      d.addEventListener('mouseenter',()=>{
+        previewBinary(idx,newCount);
+      });
+      d.addEventListener('mouseleave',()=>{
+        clearPreview();
+      });
+      d.addEventListener('click',()=>{
+        piles[idx]=newCount;
+        render();
+        if(auto_player !== null) clearInterval(auto_player)
+        auto_player = setInterval(js_move,1500)
+      });
+      dots.appendChild(d);
+    }
+    pileDiv.appendChild(dots);
+
+    // binary column (rotated)
+    const overall=document.getElementById('overallBin');
+    const binCol=document.createElement('div');binCol.className='binary';
+    const bits=pileToBinary(count);
+    bits.forEach(b=>{
+      const el=document.createElement('div');el.className='bit'+(b?' on':'');
+      binCol.appendChild(el);
+    });
+    pileDiv.appendChild(binCol);
+    //overall.parentNode.appendChild(binCol);
+    container.appendChild(pileDiv);
+  });
+
+}
+
+function previewBinary(pileIdx,newCount){
+  const previewPiles=[...piles];
+  previewPiles[pileIdx]=newCount;
+  const sum=previewPiles.reduce((a,b)=>a^b,0);
+
+  // update overall binary preview
+  const obin=pileToBinary(sum);
+  const overall=document.getElementById('overallBin');
+  [...overall.children].forEach((el,i)=>{
+    if(obin[i]) el.classList.add('preview');
+    else el.classList.remove('preview');
+  });
+
+  // update pile binary preview
+  const pileDiv=document.getElementById('piles').children[pileIdx];
+  //const pileDiv = overall.parentElement
+  const binCol=pileDiv.querySelector('.binary');
+  const bits=pileToBinary(newCount);
+  [...binCol.children].forEach((el,i)=>{
+    if(bits[i]) el.classList.add('preview');
+    else el.classList.remove('preview');
+  });
+}
+
+function clearPreview(){
+  const overall=document.getElementById('overallBin');
+  [...overall.children].forEach(el=>el.classList.remove('preview'));
+  document.querySelectorAll('.pile .binary .bit').forEach(el=>el.classList.remove('preview'));
+}
+
+// UI
+const checkbox = document.getElementById("hint");
+checkbox.addEventListener('change',()=> render())
+
+const np=document.getElementById('numPiles');
+np.addEventListener('input',()=>{
+  document.getElementById('numPilesLabel').innerText=np.value;
+});
+const ps=document.getElementById('pileSize');
+ps.addEventListener('input',()=>{
+  document.getElementById('pileSizeLabel').innerText=ps.value;
+});
+
+function regen(){
+  numPiles=+np.value;
+  maxSize=+ps.value;
+  genPiles();
+  render();
+}
+document.getElementById('regen').addEventListener('click',regen);
+
+// init
+genPiles();
+render();
+</script>
+</body>
+</html>

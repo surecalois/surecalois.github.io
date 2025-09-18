@@ -10,6 +10,7 @@
 - [puzzle_15](https://surecalois.github.io/puzzle15.html)
 - [color sort](https://surecalois.github.io/color_sort.html)
 - [Stern-Halma](https://surecalois.github.io/stern_halma.html)
+- [Nim](https://surecalois.github.io/nim_block.html)
 
 ## Random R stuff
 - [multiple_plots](https://surecalois.github.io/random_R_stuff/multiple_plots.html)
