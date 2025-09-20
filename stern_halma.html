@@ -39,6 +39,9 @@
     border: 2px solid #555;
     cursor:default;
   }
+  .dot.center{  
+    outline: 1px solid cyan;
+}
   .selected{
             border: 2px dashed #e5e5e5;
   }
@@ -68,6 +71,8 @@ let DATA = JSON.parse(JSON.stringify(BOARDS["board_4"]));
 const b_coef = DATA.map(it => `${it.b0_coef},${it.b1_coef}`)//{"b0_coef":it.b0_coef,"b1_coef":it.b1_coef}))
 const stage = document.getElementById('stage');
 const the_six = [[0,1],[-1,1],[-1,0],[0,-1],[1,-1],[1,0]]
+const bag ={}
+const empty_color = "rgb(229, 229, 229)"
 
 let currentScale = 40//Number(scaleInput.value);
 let dotSize = 30//Number(sizeInput.value);
@@ -206,6 +211,20 @@ function label_neighbors(cur_div){
     }
 }
 function click_thing(e){
+        if(e.shiftKey){
+            p = JSON.parse(e.currentTarget.dataset.dp);
+            let target_color = p.hex
+            
+            DATA.forEach(it => {
+                if(it.hex === target_color){
+                    it.hex = DATA[0].hex
+                    it.cc_color = DATA[0].cc_color //bridge search use this
+                }
+            })
+            //console.log(p)
+            render()
+            return;
+        }
         //e.currentTarget.innerHTML = "*";
         const pre = document.getElementsByClassName("selected");
         const cur = e.currentTarget
@@ -216,7 +235,7 @@ function click_thing(e){
                 return;
             }
 
-            if(cur.style.background != "rgb(229, 229, 229)"){
+            if(cur.style.background != empty_color){
                 pre[0].classList.remove("selected");
                 clear_neighbor()
                 cur.classList.add("selected")
@@ -228,7 +247,7 @@ function click_thing(e){
             clear_neighbor()
             pre[0].classList.remove("selected");
         }else{
-            if(cur.style.background == "rgb(229, 229, 229)"){
+            if(cur.style.background == empty_color){
                 //empty don't select
                 cur.classList.remove("selected");
                     return;
@@ -264,6 +283,7 @@ function render(){
     el.addEventListener('click',click_thing,false)
     fragment.appendChild(el);
   }
+  fragment.firstChild.classList.add("center")
   stage.appendChild(fragment);
 }
 
