@@ -29,6 +29,7 @@
 - [phyllotaxis](https://surecalois.github.io/random_R_stuff/phyllotaxis_thing.html)
 - [rmarkdown output filename](https://surecalois.github.io/random_R_stuff/rmd_test_cool_string.html)
 - [Stern-Halma](https://surecalois.github.io/random_R_stuff/cc_board1.html)
+- [PLL-table](https://surecalois.github.io/PLL_table2.html)
 
 ## [links to more](https://github.com/surecalois/random_R_stuff/tree/gh-pages/docs)
 ## [source](https://github.com/surecalois/surecalois.github.io/tree/main)
