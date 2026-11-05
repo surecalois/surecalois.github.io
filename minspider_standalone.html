@@ -927,8 +927,10 @@ window.SPIDER_MODEL = window.SPIDER_MODELS[4] || null; // older code
         constructor(st, ctx, opts) {
             this.ctx = ctx;
             this.model = modelFor(st, ctx);
-            this.opts = Object.assign({ width: 200, goal: 'win', allowDeal: true }, opts);
+            this.opts = Object.assign({ width: 200, goal: 'win', allowDeal: true, endgame: true, egStates: 50000, egTotal: 3000000 }, opts);
             this.goal = this.opts.goal;
+            this.eg = this.opts.endgame ? endgameSolver() : null;   // endgame handoff, see run()
+            this.egLeft = this.opts.egTotal; this.egTried = 0; this.handoff = 0;
             this.visited = new Set();
             this.expanded = 0;
             this.status = 'running'; // running | solved | failed
@@ -996,6 +998,21 @@ window.SPIDER_MODEL = window.SPIDER_MODELS[4] || null; // older code
                         this.status = 'solved';
                         return this.status;
                     }
+                    // handoff: a position with 3 sets or fewer left goes to the exact endgame solver (spider_endgame.js).
+                    // Small budget per position and per search, the beam goes on when it gives no answer.
+                    if (this.eg && this.egLeft > 0 && this.goal === 'win' && this.eg.applies(c, this.ctx, 3)) {
+                        const S = new this.eg.EndgameSearch(this.eg.fromAI(c, this.ctx), { maxStates: o.egStates });
+                        S.run(Infinity);
+                        this.egLeft -= S.nextId; this.egTried++;
+                        if (S.status === 'solved') {
+                            const path = [];
+                            for (let n = child; n && n.mv; n = n.parent) path.push(n.mv);
+                            this.moves = path.reverse().concat(S.moves);
+                            this.status = 'solved';
+                            this.handoff = this.egTried;
+                            return this.status;
+                        }
+                    }
                     const dn = Math.round((this.ctx.base - cardsOnBoard(c) - c.d * 10) / 13);
                     if (dn > this.bestDone) this.bestDone = dn;
                     if (!this.bestNode || dn > this.bestNode.dn || (dn === this.bestNode.dn && child.p > this.bestNode.p)) {
@@ -1030,15 +1047,15 @@ window.SPIDER_MODEL = window.SPIDER_MODELS[4] || null; // older code
         // endgame solver (spider_endgame.js) goes first. It is complete, so 'exhausted' PROVES the position lost.
         // Only if it hits its state limit do the stages below run.
         const EG = endgameSolver();
-        if (EG && EG.applies(st, ctx, 3)) {
+        if (o.endgame !== false && EG && EG.applies(st, ctx, 3)) {
             stages.push({ label: 'endgame exact (' + Math.round((cardsOnBoard(st) + st.d * 10) / 13) + ' sets left)',
                 make: () => new EG.EndgameSearch(EG.fromAI(st, ctx), { maxStates: o.endgameStates }) });
         }
         stages.push(
             { label: 'exact search', make: () => new Search(st, ctx, { maxStates: o.exactStates }) },
-            { label: 'beam 150', make: () => new BeamSearch(st, ctx, { width: 150, lam, decay: 0.9 }) },
-            { label: 'beam 400', make: () => new BeamSearch(st, ctx, { width: 400, lam, decay: 0.9 }) },
-            { label: 'beam 1000', make: () => new BeamSearch(st, ctx, { width: 1000, lam, decay: 0.9 }) }
+            { label: 'beam 150', make: () => new BeamSearch(st, ctx, { width: 150, lam, decay: 0.9, endgame: o.endgame !== false }) },
+            { label: 'beam 400', make: () => new BeamSearch(st, ctx, { width: 400, lam, decay: 0.9, endgame: o.endgame !== false }) },
+            { label: 'beam 1000', make: () => new BeamSearch(st, ctx, { width: 1000, lam, decay: 0.9, endgame: o.endgame !== false }) }
         );
         const t0 = Date.now();
         let k = 0, cur = stages[0].make(), cancelled = false, timer = null, done = false, resolveFn, best = null;
