@@ -47,20 +47,39 @@
     transition: 0ms;
 }
 
+.ai-status{
+    position: fixed;
+    left: 50%;
+    transform: translate(-50%, 0);
+    bottom: 0%;
+    width: 960px;
+    text-align: center;
+    font-family: sans-serif;
+    font-size: 12px;
+    color: rgb(70, 70, 70);
+}
+
 .control{
     position: fixed; 
-    bottom:0%;
+    bottom: 15px;
     left: 50%;
     transform: translate(-50%, 0);
 }
 
+
+.control button:disabled{
+    color: rgb(215, 215, 215);
+}
+
+
+
 .control button{
     position: relative;
-    font-size: 1.3em;
+    font-size: 1.0em;
     color: darkgray;
-    padding: 10px;
-    margin-left: 10px;
-    margin-right: 10px;
+    padding: 7px;
+    margin-left: 7px;
+    margin-right: 7px;
     border: none;
     background-color: transparent;
 }
@@ -132,3 +151,7 @@
       transform: rotate(10deg);/*translate3d(4px, 0, 0);*/
     }
   }
+
+
+/* column under the dragged cards */
+.col.drop_hint { outline: 3px solid #00e5ff; outline-offset: -3px; }
