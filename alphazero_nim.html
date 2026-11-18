@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlphaZero MCTS + MLP — Two-Pile Nim Studio</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #181b22;
+      --panel-alt: #222631;
+      --border: #2e3444;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #eab308;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 20px; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    header { max-width: 1200px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    header h1 { margin: 0; font-size: 20px; }
+    header .subtitle { color: var(--muted); font-size: 13px; }
+    .grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.1fr 1fr 1.2fr; gap: 16px; }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .card-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+    .board { background: var(--panel-alt); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 18px; min-height: 190px; justify-content: center; }
+    .pile-row { display: flex; flex-direction: column; gap: 8px; }
+    .pile-header { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+    .stones-wrap { display: flex; flex-wrap: wrap; gap: 8px; min-height: 36px; align-items: center; }
+    .stone { width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb); border: 2px solid #93c5fd; cursor: pointer; transition: transform 0.12s; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; }
+    .stone.highlight { background: radial-gradient(circle at 30% 30%, #f87171, #dc2626); border-color: #fca5a5; transform: translateY(-3px) scale(1.06); }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    button { padding: 8px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--panel-alt); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; }
+    button:hover:not(:disabled) { background: #2d3342; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+    button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+    button.success { background: #16a34a; border-color: #16a34a; color: white; }
+    .control-box { background: var(--panel-alt); padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+    .slider-label { display: flex; justify-content: space-between; }
+    input.slider { width: 100%; cursor: pointer; }
+    .status-banner { padding: 10px 12px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.35); font-size: 13px; font-weight: 600; text-align: center; }
+    .status-banner.win { background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.4); color: #4ade80; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+    .stat-cell { background: var(--panel-alt); padding: 8px; border-radius: 8px; }
+    .stat-cell .num { font-size: 16px; font-weight: 700; }
+    .stat-cell .lbl { font-size: 11px; color: var(--muted); }
+    .bar-bg { height: 8px; background: var(--panel-alt); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; transition: width 0.2s ease, background 0.2s ease; }
+    .tree-container { display: flex; flex-direction: column; gap: 8px; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+    .tree-node { background: var(--panel-alt); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 12px; }
+    .tree-node.best-move { border-color: var(--green); box-shadow: inset 3px 0 0 var(--green); }
+    .tree-node-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; cursor: pointer; }
+    .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: rgba(0, 0, 0, 0.2); padding: 6px; border-radius: 6px; text-align: center; font-family: monospace; font-size: 11px; }
+    .sub-children { margin-top: 8px; padding-left: 10px; border-left: 2px solid #3f475a; display: none; flex-direction: column; gap: 5px; }
+    .sub-children.open { display: flex; }
+    .sub-node { background: rgba(15, 17, 21, 0.6); padding: 6px 8px; border-radius: 6px; display: flex; justify-content: space-between; font-family: monospace; font-size: 11px; color: var(--muted); }
+    .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; }
+    .badge.opt { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+    .badge.chosen { background: rgba(59, 130, 246, 0.25); color: #93c5fd; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>AlphaZero MCTS + Dual-Head MLP</h1>
+    <div class="subtitle">Two-Pile Nim • PUCT Search • Neural Value &amp; Policy Distillation</div>
+  </div>
+  <div class="btn-row">
+    <button onclick="newGame(7, 4)">New (7, 4)</button>
+    <button onclick="newGame(9, 5)">New (9, 5)</button>
+    <button onclick="newRandomGame()">New Random</button>
+  </div>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-title">
+      <span>1. Nim Board</span>
+      <span id="state-badge">State: (7, 4)</span>
+    </div>
+    <div id="status-banner" class="status-banner">Player 0's Turn (Click stones to take)</div>
+    <div class="board" id="board"></div>
+    <div class="control-box">
+      <div class="slider-label">
+        <span>MCTS Simulations / Move:</span>
+        <strong id="budget-val">40</strong>
+      </div>
+      <input id="budget-slider" class="slider" type="range" min="10" max="200" step="10" value="40" />
+      <div class="btn-row" style="margin-top: 4px;">
+        <button class="primary" style="flex:1;" onclick="stepAI()">AI Move (Step)</button>
+        <button id="auto-btn" class="success" style="flex:1;" onclick="toggleAutoPlay()">Auto AI vs AI</button>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-cell"><div class="num" id="stat-p0">0</div><div class="lbl">P0 Wins</div></div>
+      <div class="stat-cell"><div class="num" id="stat-p1">0</div><div class="lbl">P1 Wins</div></div>
+      <div class="stat-cell"><div class="num" id="stat-sims">0</div><div class="lbl">Total MCTS Sims</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span>2. Dual-Head MLP</span>
+      <span id="trained-badge">0 Self-Play Games</span>
+    </div>
+    <div class="control-box">
+      <div class="slider-label">
+        <span>Self-Play Training Episodes:</span>
+        <strong id="ep-val">300</strong>
+      </div>
+      <input id="ep-slider" class="slider" type="range" min="50" max="1500" step="50" value="300" />
+      <div class="btn-row" style="margin-top: 4px;">
+        <button id="train-btn" class="primary" style="flex:2;" onclick="runTraining()">Train Self-Play</button>
+        <button style="flex:1;" onclick="resetNetwork()">Reset Net</button>
+      </div>
+    </div>
+    <div>
+      <div class="slider-label" style="font-size: 13px; margin-bottom: 6px;">
+        <span>Value Head <strong>V(s)</strong> <span id="val-turn" style="color:var(--muted)"></span></span>
+        <strong id="val-num">0.00</strong>
+      </div>
+      <div class="bar-bg" style="height: 12px;">
+        <div id="val-bar" class="bar-fill" style="width: 50%; background: var(--yellow);"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:4px;">
+        <span>-1.0 (Losing)</span><span>0.0</span><span>+1.0 (Winning)</span>
+      </div>
+    </div>
+    <div style="flex: 1;">
+      <div style="font-size: 13px; margin-bottom: 8px;">Raw Policy Priors <strong>P(s, a)</strong> (Before MCTS):</div>
+      <div id="policy-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span>3. MCTS Search Tree</span>
+      <span id="tree-meta" style="font-size: 11px;">Run AI step to inspect</span>
+    </div>
+    <div style="font-size: 12px; color: var(--muted); line-height: 1.4;">
+      Sorted by visit count <strong>N</strong>. Click any branch to inspect depth-2 responses.<br/>
+      <code>PUCT = Q + C·P·√N_parent / (1 + N)</code>
+    </div>
+    <div id="tree-container" class="tree-container">
+      <div style="color: var(--muted); font-size: 13px; text-align: center; padding: 30px 10px;">
+        Click <strong>"AI Move (Step)"</strong> or <strong>"Auto AI vs AI"</strong> to run MCTS and inspect the search tree.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const C_PUCT = 1.5;
+const MAX_STONES = 15;
+const ACTION_SIZE = 2 * MAX_STONES;
+
+let stones = { p0: 7, p1: 4 };
+let player = 0;
+let root = null;
+let autoTimer = null;
+let totalSims = 0;
+let totalTrainedGames = 0;
+let stats = { p0: { moves: 0, sims: 0, wins: 0 }, p1: { moves: 0, sims: 0, wins: 0 } };
+let gameTrajectory = new Array();
+
+
+class DualHeadMLP {
+  constructor(inputSize = 4, hiddenSize = 32, actionSize = ACTION_SIZE, lr = 0.025) {
+    this.inputSize = inputSize;
+    this.hiddenSize = hiddenSize;
+    this.actionSize = actionSize;
+    this.lr = lr;
+    this.W1 = Array.from({ length: hiddenSize }, () => Array.from({ length: inputSize }, () => (Math.random() - 0.5) * 0.5));
+    this.b1 = new Array(hiddenSize).fill(0);
+    this.Wp = Array.from({ length: actionSize }, () => Array.from({ length: hiddenSize }, () => (Math.random() - 0.5) * 0.2)
+    );
+    this.bp = new Array(actionSize).fill(0);
+    this.Wv = Array.from({ length: hiddenSize }, () => (Math.random() - 0.5) * 0.2);
+    this.bv = 0;
+  }
+
+  encodeState(state) {
+      return Array.of(
+      state.p0 / MAX_STONES,
+      state.p1 / MAX_STONES,
+      Math.abs(state.p0 - state.p1) / MAX_STONES,
+      state.p0 === state.p1 ? 1.0 : -1.0
+      );
+  }
+  forward(state) {
+      const x = this.encodeState(state);
+      const h = new Array(this.hiddenSize);
+      for (let i = 0; i < this.hiddenSize; i++) {
+      let sum = this.b1.at(i);
+      const rowW1 = this.W1.at(i);
+      for (let j = 0; j < this.inputSize; j++) sum += rowW1.at(j) * x.at(j);
+        h.splice(i, 1, Math.tanh(sum));
+      }
+      const logits = new Array(this.actionSize);
+      for (let a = 0; a < this.actionSize; a++) {
+        let sum = this.bp.at(a);
+        const rowWp = this.Wp.at(a);
+        for (let i = 0; i < this.hiddenSize; i++) sum += rowWp.at(i) * h.at(i);
+        logits.splice(a, 1, sum);
+      }
+      let vSum = this.bv;
+      for (let i = 0; i < this.hiddenSize; i++) vSum += this.Wv.at(i) * h.at(i);
+      const value = Math.tanh(vSum);
+      return { x, h, logits, value };
+  }
+  predict(state) {
+      const { logits, value } = this.forward(state);
+      const legalMoves = getLegalMoves(state);
+      let maxLogit = -Infinity;
+      for (const m of legalMoves) {
+        const idx = moveToIndex(m);
+        if (logits.at(idx) > maxLogit) maxLogit = logits.at(idx);
+      }
+      let expSum = 0;
+      const policy = new Map();
+      for (const m of legalMoves) {
+        const idx = moveToIndex(m);
+        const e = Math.exp(logits.at(idx) - maxLogit);
+        policy.set(idx, e);
+        expSum += e;
+      }
+      for (const entry of policy.entries()) {
+        policy.set(entry.at(0), entry.at(1) / expSum);
+      }
+      return { policy, value };
+  }
+  trainStep(state, targetProbsMap, targetValue) {
+    const { x, h, logits, value } = this.forward(state);
+    const dValue = (value - targetValue) * (1 - value * value);
+    const dLogits = new Array(this.actionSize).fill(0);
+    let maxLogit = -Infinity;
+    for (const idx of targetProbsMap.keys()) {
+    if (logits.at(idx) > maxLogit) maxLogit = logits.at(idx);
+    }
+    let expSum = 0;
+    for (const idx of targetProbsMap.keys()) {
+    expSum += Math.exp(logits.at(idx) - maxLogit);
+    }
+    for (const entry of targetProbsMap.entries()) {
+    const idx = entry.at(0);
+    const targetP = entry.at(1);
+    const predP = Math.exp(logits.at(idx) - maxLogit) / expSum;
+    dLogits.splice(idx, 1, predP - targetP);
+    }
+    const dHidden = new Array(this.hiddenSize).fill(0);
+    for (let i = 0; i < this.hiddenSize; i++) {
+    let grad = dValue * this.Wv.at(i);
+    for (const idx of targetProbsMap.keys()) {
+    grad += dLogits.at(idx) * this.Wp.at(idx).at(i);
+    }
+    dHidden.splice(i, 1, grad * (1 - h.at(i) * h.at(i)));
+    }
+    this.bv -= this.lr * dValue;
+    for (let i = 0; i < this.hiddenSize; i++) {
+    this.Wv.splice(i, 1, this.Wv.at(i) - this.lr * dValue * h.at(i));
+    }
+    for (const idx of targetProbsMap.keys()) {
+    this.bp.splice(idx, 1, this.bp.at(idx) - this.lr * dLogits.at(idx));
+    const rowWp = this.Wp.at(idx);
+    for (let i = 0; i < this.hiddenSize; i++) {
+    rowWp.splice(i, 1, rowWp.at(i) - this.lr * dLogits.at(idx) * h.at(i));
+    }
+    }
+    for (let i = 0; i < this.hiddenSize; i++) {
+    this.b1.splice(i, 1, this.b1.at(i) - this.lr * dHidden.at(i));
+    const rowW1 = this.W1.at(i);
+    for (let j = 0; j < this.inputSize; j++) {
+    rowW1.splice(j, 1, rowW1.at(j) - this.lr * dHidden.at(i) * x.at(j));
+    }
+    }
+  }
+}
+
+let mlp = new DualHeadMLP();
+
+function moveToIndex(move) {
+  return move.pile * MAX_STONES + (move.count - 1);
+}
+
+function getLegalMoves(state) {
+  const moves = new Array();
+  for (let i = 1; i <= state.p0; i++) moves.push({ pile: 0, count: i });
+  for (let i = 1; i <= state.p1; i++) moves.push({ pile: 1, count: i });
+  return moves;
+}
+
+class Node {
+  constructor(state, playerToMove, parent = null, move = null, mover = null, prior = 0) {
+    this.state = { p0: state.p0, p1: state.p1 };
+    this.playerToMove = playerToMove;
+    this.parent = parent;
+    this.move = move;
+    this.player = mover;
+    this.prior = prior;
+    this.children = new Array();
+    this.visits = 0;
+    this.valueSum = 0;
+    this.isExpanded = false;
+  }
+
+  get qValue() {
+    return this.visits === 0 ? 0 : this.valueSum / this.visits;
+  }
+  uValue(parentVisits) {
+    return C_PUCT * this.prior * (Math.sqrt(parentVisits) / (1 + this.visits));
+  }
+}
+
+
+function selectChild(node) {
+  let best = null;
+  let bestPUCT = -Infinity;
+  for (const child of node.children) {
+    const puct = child.qValue + child.uValue(node.visits);
+    if (puct > bestPUCT) {
+      bestPUCT = puct;
+      best = child;
+    }
+  }
+  return best;
+}
+
+
+function expandAndEvaluate(node) {
+  if (node.state.p0 === 0 && node.state.p1 === 0) return -1.0;
+  const { policy, value } = mlp.predict(node.state);
+  const moves = getLegalMoves(node.state);
+  for (const move of moves) {
+  const childState = {
+  p0: move.pile === 0 ? node.state.p0 - move.count : node.state.p0,
+  p1: move.pile === 1 ? node.state.p1 - move.count : node.state.p1
+  };
+  const prior = policy.get(moveToIndex(move)) || 0;
+  node.children.push(
+  new Node(childState, 1 - node.playerToMove, node, move, node.playerToMove, prior)
+  );
+  }
+  node.isExpanded = true;
+  return value;
+}
+
+function backpropagate(node, leafValue) {
+  let currentValue = -leafValue;
+  while (node) {
+    node.visits++;
+    node.valueSum += currentValue;
+    currentValue = -currentValue;
+    node = node.parent;
+  }
+}
+
+function search(agent, budget, isTraining = false) {
+    root = new Node(stones, agent);
+    expandAndEvaluate(root);
+    if (isTraining && root.children.length > 0) {
+        const eps = 0.25;
+        const noise = 1 / root.children.length;
+        for (const c of root.children) {
+          c.prior = (1 - eps) * c.prior + eps * noise;
+        }
+    }
+
+    for (let i = 0; i < budget; i++) {
+      let node = root;
+      while (node.isExpanded && node.children.length > 0) {
+        node = selectChild(node);
+      }
+      const leafValue = expandAndEvaluate(node);
+      backpropagate(node, leafValue);
+    }
+
+    if (!isTraining) {
+      if (agent === 0) stats.p0.sims += budget;
+      else stats.p1.sims += budget;
+      totalSims += budget;
+    }
+    const visitProbs = new Map();
+    let sumVisits = 0;
+    for (const c of root.children) {
+      visitProbs.set(moveToIndex(c.move), c.visits);
+      sumVisits += c.visits;
+    }
+    for (const entry of visitProbs.entries()) {
+      visitProbs.set(entry.at(0), sumVisits > 0 ? entry.at(1) / sumVisits : 0);
+    }
+    gameTrajectory.push({ state: { p0: stones.p0, p1: stones.p1 }, player: agent, visitProbs });
+    if (isTraining) {
+      let r = Math.random();
+      for (const c of root.children) {
+        r -= visitProbs.get(moveToIndex(c.move));
+        if (r <= 0) return c;
+      }
+    }
+    return Array.from(root.children).sort((a, b) => b.visits - a.visits).at(0);
+}
+
+function recordGameEnd(winner) {
+  for (const step of gameTrajectory) {
+    const targetVal = step.player === winner ? 1.0 : -1.0;
+    mlp.trainStep(step.state, step.visitProbs, targetVal);
+  }
+  gameTrajectory = new Array();
+}
+
+const budgetSlider = document.getElementById("budget-slider");
+budgetSlider.addEventListener("input", () => {
+document.getElementById("budget-val").textContent = budgetSlider.value;
+});
+const epSlider = document.getElementById("ep-slider");
+epSlider.addEventListener("input", () => {
+document.getElementById("ep-val").textContent = epSlider.value;});
+
+function isGameOver() {
+  return stones.p0 === 0 && stones.p1 === 0;
+}
+
+function applyMove(pile, count, chosenNode = null) {
+    const currentCount = pile === 0 ? stones.p0 : stones.p1;
+    if (isGameOver() || count < 1 || count > currentCount) return;
+    if (pile === 0) stones.p0 -= count;
+    else stones.p1 -= count;
+    if (player === 0) stats.p0.moves++;
+    else stats.p1.moves++;
+    if (isGameOver()) {
+    if (player === 0) stats.p0.wins++;
+    else stats.p1.wins++;
+    recordGameEnd(player);
+    stopAutoPlay();
+    } else {
+    player = 1 - player;
+    }
+    renderAll(chosenNode);
+}
+
+function stepAI(loop=0) {
+  if (isGameOver()){
+    console.log("gameover in stepAI")
+    if(loop==1){
+      newRandomGame();
+    }else{
+      return;
+    }
+  }
+  const budget = parseInt(budgetSlider.value, 10);
+  const bestChild = search(player, budget, false);
+  renderTree(root, bestChild);
+  applyMove(bestChild.move.pile, bestChild.move.count, bestChild);
+}
+
+function toggleAutoPlay() {
+  if (autoTimer) {
+    //console.log("just toggle")
+    stopAutoPlay();
+  } else {
+    if (isGameOver()) {
+      //console.log("gameover in toggle @1")
+      newRandomGame();
+      //console.log("gameover and created new @ 1")
+      //setTimeout(() => console.log("3sec is up @ 1"),3000);
+    }
+    document.getElementById("auto-btn").textContent = "Stop Auto";
+    autoTimer = setInterval(() => {
+      if (isGameOver()) {
+       console.log("gameover in toggle @2")
+       stopAutoPlay();
+       return
+      }
+      stepAI();
+      //console.log("running")
+      if(isGameOver()){
+        //console.log("game over after step")
+        setTimeout(toggleAutoPlay,3000)
+      }
+    }, 550);
+  }
+}
+
+function stopAutoPlay() {
+  if (autoTimer) {
+    clearInterval(autoTimer);
+    autoTimer = null;
+  }
+  document.getElementById("auto-btn").textContent = "Auto AI vs AI";
+}
+
+function newGame(p0Count, p1Count) {
+stopAutoPlay();
+stones = { p0: p0Count, p1: p1Count };
+player = 0;
+root = null;
+gameTrajectory = new Array();
+document.getElementById("tree-container").innerHTML =
+'New game started. Click "AI Move (Step)" to inspect MCTS tree.';
+document.getElementById("tree-meta").textContent = "Awaiting search";
+renderAll();
+}
+
+function newRandomGame() {
+  const s0 = Math.floor(Math.random() * 8) + 2;
+  const s1 = Math.floor(Math.random() * 8) + 2;
+  newGame(s0, s1);
+}
+
+function runTraining() {
+  stopAutoPlay();
+  const btn = document.getElementById("train-btn");
+  const episodes = parseInt(epSlider.value, 10);
+  btn.textContent = "Training...";
+  btn.disabled = true;
+  setTimeout(() => {
+    const savedStones = { p0: stones.p0, p1: stones.p1 };
+    const savedPlayer = player;
+    const savedTraj = Array.from(gameTrajectory);
+
+    for (let ep = 0; ep < episodes; ep++) {
+        stones = {
+          p0: Math.floor(Math.random() * 8) + 1,
+          p1: Math.floor(Math.random() * 8) + 1
+        };
+        let p = 0;
+        gameTrajectory = new Array();
+        while (stones.p0 > 0 || stones.p1 > 0) {
+          const chosen = search(p, 25, true);
+          stones = { p0: chosen.state.p0, p1: chosen.state.p1 };
+          if (stones.p0 === 0 && stones.p1 === 0) break;
+              p = 1 - p;
+        }
+        recordGameEnd(p);
+    }
+
+      stones = savedStones;
+      player = savedPlayer;
+      gameTrajectory = savedTraj;
+      totalTrainedGames += episodes;
+      document.getElementById("trained-badge").textContent = totalTrainedGames + " Self-Play Games";
+      btn.textContent = "Train Self-Play";
+      btn.disabled = false;
+      renderAll();
+  }, 20);
+}
+
+function resetNetwork() {
+  stopAutoPlay();
+  mlp = new DualHeadMLP();
+  totalTrainedGames = 0;
+  document.getElementById("trained-badge").textContent = "0 Self-Play Games";
+  renderAll();
+}
+
+function renderAll() {
+  renderBoard();
+  renderMLPInspector();
+  document.getElementById("stat-p0").textContent = stats.p0.wins;
+  document.getElementById("stat-p1").textContent = stats.p1.wins;
+  document.getElementById("stat-sims").textContent = totalSims.toLocaleString();
+}
+
+function renderBoard() {
+  const boardEl = document.getElementById("board");
+  const statusEl = document.getElementById("status-banner");
+  document.getElementById("state-badge").textContent = "State: (" + stones.p0 + ", " + stones.p1 + ")";
+
+  if (isGameOver()) {
+    statusEl.textContent = "Game Over — Player " + player + " Wins!";
+    statusEl.className = "status-banner win";
+  } else {
+    statusEl.textContent = "Player " + player + "'s Turn (Click stones to take)";
+    statusEl.className = "status-banner";
+  }
+
+  const piles = Array.of(0, 1);
+  boardEl.innerHTML = piles.map(pileIdx => {
+    const count = pileIdx === 0 ? stones.p0 : stones.p1;
+    let stonesHTML = "";
+
+    for (let i = 1; i <= count; i++) {
+      const takeCount = count - i + 1;
+      stonesHTML +=
+        '<div class="stone" data-pile="' + pileIdx + '" data-take="' + takeCount + '" ' +
+        'onmouseenter="highlightStones(' + pileIdx + ', ' + takeCount + ')" ' +
+        'onmouseleave="clearHighlights()" ' +
+        'onclick="applyMove(' + pileIdx + ', ' + takeCount + ')">' +
+        takeCount +
+        '</div>';
+    }
+
+    if (count === 0) {
+      stonesHTML = '<span style="color:var(--muted); font-size:12px;">Empty</span>';
+    }
+
+    return (
+      '<div class="pile-row">' +
+        '<div class="pile-header">' +
+          '<span><strong>Pile ' + pileIdx + '</strong></span>' +
+          '<span>' + count + ' stone' + (count === 1 ? '' : 's') + '</span>' +
+        '</div>' +
+        '<div class="stones-wrap">' + stonesHTML + '</div>' +
+      '</div>'
+    );
+  }).join("");
+}
+
+function highlightStones(pile, takeCount) {
+  document.querySelectorAll(".stone").forEach(el => {
+  if (parseInt(el.dataset.pile, 10) === pile && parseInt(el.dataset.take, 10) <= takeCount) {
+  el.classList.add("highlight");
+}
+});
+}
+
+function clearHighlights() {
+  document.querySelectorAll(".stone").forEach(el => el.classList.remove("highlight"));
+}
+
+function renderMLPInspector() {
+  document.getElementById("val-turn").textContent = "(for Player " + player + ")";
+  const listEl = document.getElementById("policy-list");
+
+  if (isGameOver()) {
+    document.getElementById("val-num").textContent = "Terminal";
+    document.getElementById("val-bar").style.width = "0%";
+    listEl.innerHTML = '<div style="color:var(--muted);">No legal moves left.</div>';
+    return;
+  }
+
+  const { policy, value } = mlp.predict(stones);
+  const pct = Math.round(((value + 1) / 2) * 100);
+  const valBar = document.getElementById("val-bar");
+  document.getElementById("val-num").textContent = (value >= 0 ? "+" : "") + value.toFixed(2);
+  valBar.style.width = pct + "%";
+  valBar.style.background = value > 0.15 ? "var(--green)" : value < -0.15 ? "var(--red)" : "var(--yellow)";
+
+  const scoredMoves = getLegalMoves(stones)
+    .map(m => ({ move: m, prob: policy.get(moveToIndex(m)) || 0 }))
+    .sort((a, b) => b.prob - a.prob);
+
+  listEl.innerHTML = scoredMoves.slice(0, 5).map(({ move, prob }) => {
+    const barPct = (prob * 100).toFixed(1);
+    const remThis = (move.pile === 0 ? stones.p0 : stones.p1) - move.count;
+    const remOther = move.pile === 0 ? stones.p1 : stones.p0;
+    const isOptimal = remThis === remOther;
+    const badge = isOptimal ? '<span class="badge opt">★ OPTIMAL</span>' : '';
+    const barColor = isOptimal ? "var(--green)" : "var(--accent)";
+
+    return (
+      '<div>' +
+        '<div style="display:flex; justify-content:space-between; margin-bottom:3px;">' +
+          '<span>Pile ' + move.pile + ' &rarr; take <strong>' + move.count + '</strong> ' + badge + '</span>' +
+          '<strong>' + barPct + '%</strong>' +
+        '</div>' +
+        '<div class="bar-bg">' +
+          '<div class="bar-fill" style="width:' + barPct + '%; background:' + barColor + ';"></div>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join("");
+}
+
+function renderTree(searchRoot, chosenChild) {
+  const container = document.getElementById("tree-container");
+  document.getElementById("tree-meta").textContent =
+    "Root N=" + searchRoot.visits + " • State (" + searchRoot.state.p0 + ", " + searchRoot.state.p1 + ")";
+
+  const sortedChildren = Array.from(searchRoot.children).sort((a, b) => b.visits - a.visits);
+
+  container.innerHTML = sortedChildren.map((child, idx) => {
+    const isChosen = child === chosenChild;
+    const isOptimal = child.state.p0 === child.state.p1;
+    const q = child.qValue;
+    const u = child.uValue(searchRoot.visits);
+    const puct = q + u;
+
+    const grandChildren = Array.from(child.children).sort((a, b) => b.visits - a.visits).slice(0, 4);
+    let subHTML = "";
+
+    if (grandChildren.length > 0) {
+      subHTML = grandChildren.map(gc =>
+        '<div class="sub-node">' +
+          '<span>Opp: Pile ' + gc.move.pile + ' take ' + gc.move.count + ' &rarr; (' + gc.state.p0 + ', ' + gc.state.p1 + ')</span>' +
+          '<span>N=' + gc.visits + ' | Q=' + gc.qValue.toFixed(2) + '</span>' +
+        '</div>'
+      ).join("");
+    } else {
+      const leafLabel = (child.state.p0 === 0 && child.state.p1 === 0)
+        ? "Terminal Win (+1.0)"
+        : "Leaf node (not expanded further)";
+      subHTML = '<div class="sub-node"><span>' + leafLabel + '</span></div>';
+    }
+
+    const qColor = q >= 0 ? "#4ade80" : "#f87171";
+    const qSign = q >= 0 ? "+" : "";
+    const chosenBadge = isChosen ? '<span class="badge chosen">CHOSEN</span>' : '';
+    const optBadge = isOptimal ? '<span class="badge opt">★</span>' : '';
+
+    return (
+      '<div class="tree-node ' + (isChosen ? 'best-move' : '') + '">' +
+        '<div class="tree-node-header" onclick="this.nextElementSibling.nextElementSibling.classList.toggle(\'open\')">' +
+          '<div>' +
+            '<strong>Pile ' + child.move.pile + ' &rarr; take ' + child.move.count + '</strong> ' +
+            '<span style="color:var(--muted);">(&rarr; ' + child.state.p0 + ', ' + child.state.p1 + ')</span> ' +
+            chosenBadge + ' ' + optBadge +
+          '</div>' +
+          '<span style="color:var(--muted); font-size:11px;">▼ details</span>' +
+        '</div>' +
+        '<div class="metrics-row">' +
+          '<div><div style="color:var(--muted)">Visits N</div><strong>' + child.visits + '</strong></div>' +
+          '<div><div style="color:var(--muted)">Prior P</div><strong>' + (child.prior * 100).toFixed(1) + '%</strong></div>' +
+          '<div><div style="color:var(--muted)">Value Q</div><strong style="color:' + qColor + '">' + qSign + q.toFixed(2) + '</strong></div>' +
+          '<div><div style="color:var(--muted)">PUCT</div><strong>' + puct.toFixed(2) + '</strong></div>' +
+        '</div>' +
+        '<div class="sub-children ' + (idx === 0 ? 'open' : '') + '">' +
+          subHTML +
+        '</div>' +
+      '</div>'
+    );
+  }).join("");
+}
+
+renderAll();
+</script>
