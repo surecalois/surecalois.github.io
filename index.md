@@ -5,12 +5,14 @@
 
 ## Fun stuff
 - [MinSpider](https://surecalois.github.io/spider_stl.html)
+- [MinSpider app](https://surecalois.github.io/minspider_standalone.html)
 - [colorlinz](https://surecalois.github.io/colorlinez_d.html)
 - [stone matrix](https://surecalois.github.io/stone_matrix.html)
 - [puzzle_15](https://surecalois.github.io/puzzle15.html)
 - [color sort](https://surecalois.github.io/color_sort.html)
 - [Stern-Halma](https://surecalois.github.io/stern_halma.html)
 - [Nim](https://surecalois.github.io/nim_block.html)
+- [mcts_Nim](https://surecalois.github.io/alphazero_nim.html)
 
 ## Random R stuff
 - [multiple_plots](https://surecalois.github.io/random_R_stuff/multiple_plots.html)
