@@ -43,6 +43,8 @@
     .control-box { background: var(--panel-alt); padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
     .slider-label { display: flex; justify-content: space-between; }
     input.slider { width: 100%; cursor: pointer; }
+    input.num { padding: 5px 5px;width: 42px; border: 0; border-radius: 7px; background: #3f475a;color: white;margin: 4px;}
+    .input-label{margin-top:auto;margin-bottom: auto ;color: var(--muted); font-size: 13px;}
     .status-banner { padding: 10px 12px; border-radius: 8px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.35); font-size: 13px; font-weight: 600; text-align: center; }
     .status-banner.win { background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.4); color: #4ade80; }
     .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
@@ -72,9 +74,14 @@
     <div class="subtitle">Two-Pile Nim • PUCT Search • Neural Value &amp; Policy Distillation</div>
   </div>
   <div class="btn-row">
-    <button onclick="newGame(7, 4)">New (7, 4)</button>
-    <button onclick="newGame(9, 5)">New (9, 5)</button>
+    <!--button onclick="newGame(7, 4)">New (7, 4)</button-->
+    <!--button onclick="newGame(9, 5)">New (9, 5)</button-->
     <button onclick="newRandomGame()">New Random</button>
+    <button onclick="newGame1()">New Game</button>
+    <label for="pA" class="input-label">Pile 0:</label>
+    <input type="number" class="num" name="A" id="pA" value="13" onchange="capit()">
+    <label for="pB" class="input-label">Pile 1:</label>
+    <input type="number" class="num" name="B" id="pB" value="11" onchange="capit()">
   </div>
 </header>
 
@@ -83,6 +90,9 @@
     <div class="card-title">
       <span>1. Nim Board</span>
       <span id="state-badge">State: (7, 4)</span>
+    </div>
+    <div style="font-size: 12px; color: var(--muted); line-height: 1.4;">
+      RULE: pick one of the two piles and grab some stones from the it; whoever get the last stone wins.
     </div>
     <div id="status-banner" class="status-banner">Player 0's Turn (Click stones to take)</div>
     <div class="board" id="board"></div>
@@ -100,6 +110,7 @@
     <div class="stats-grid">
       <div class="stat-cell"><div class="num" id="stat-p0">0</div><div class="lbl">P0 Wins</div></div>
       <div class="stat-cell"><div class="num" id="stat-p1">0</div><div class="lbl">P1 Wins</div></div>
+      <div class="stat-cell"><div class="num" id="stat-mis">0</div><div class="lbl">missed</div></div>
       <div class="stat-cell"><div class="num" id="stat-sims">0</div><div class="lbl">Total MCTS Sims</div></div>
     </div>
   </div>
@@ -107,14 +118,14 @@
   <div class="card">
     <div class="card-title">
       <span>2. Dual-Head MLP</span>
-      <span id="trained-badge">0 Self-Play Games</span>
+      <span id="trained-badge">0 Self-Play</span>
     </div>
     <div class="control-box">
       <div class="slider-label">
         <span>Self-Play Training Episodes:</span>
-        <strong id="ep-val">300</strong>
+        <strong id="ep-val">500</strong>
       </div>
-      <input id="ep-slider" class="slider" type="range" min="50" max="1500" step="50" value="300" />
+      <input id="ep-slider" class="slider" type="range" min="50" max="1500" step="50" value="500" />
       <div class="btn-row" style="margin-top: 4px;">
         <button id="train-btn" class="primary" style="flex:2;" onclick="runTraining()">Train Self-Play</button>
         <button style="flex:1;" onclick="resetNetwork()">Reset Net</button>
@@ -157,7 +168,9 @@
 
 <script>
 const C_PUCT = 1.5;
-const MAX_STONES = 15;
+const MAX_STONES = 30;//15;
+const STONES_CAP = 21;
+const STONES_MIN = 2;
 const ACTION_SIZE = 2 * MAX_STONES;
 
 let stones = { p0: 7, p1: 4 };
@@ -166,9 +179,17 @@ let root = null;
 let autoTimer = null;
 let totalSims = 0;
 let totalTrainedGames = 0;
-let stats = { p0: { moves: 0, sims: 0, wins: 0 }, p1: { moves: 0, sims: 0, wins: 0 } };
+let stats = { p0: { moves: 0, sims: 0, wins: 0 }, p1: { moves: 0, sims: 0, wins: 0 }, mis:0,winner:0 };
 let gameTrajectory = new Array();
 
+function capit(){
+  const a = document.getElementById("pA");
+  const b = document.getElementById("pB");
+  if(a.value > MAX_STONES) a.value = MAX_STONES;
+  if(b.value > MAX_STONES) b.value = MAX_STONES;
+  if(a.value <= STONES_MIN) a.value = STONES_MIN+1;
+  if(b.value <= STONES_MIN) b.value = STONES_MIN+1;
+}
 
 class DualHeadMLP {
   constructor(inputSize = 4, hiddenSize = 32, actionSize = ACTION_SIZE, lr = 0.025) {
@@ -433,10 +454,11 @@ function applyMove(pile, count, chosenNode = null) {
     if (player === 0) stats.p0.moves++;
     else stats.p1.moves++;
     if (isGameOver()) {
-    if (player === 0) stats.p0.wins++;
-    else stats.p1.wins++;
-    recordGameEnd(player);
-    stopAutoPlay();
+      if (player === 0) stats.p0.wins++;
+      else stats.p1.wins++;
+      if(stats.winner != player) stats.mis++;
+      recordGameEnd(player);
+      stopAutoPlay();
     } else {
     player = 1 - player;
     }
@@ -464,10 +486,7 @@ function toggleAutoPlay() {
     stopAutoPlay();
   } else {
     if (isGameOver()) {
-      //console.log("gameover in toggle @1")
       newRandomGame();
-      //console.log("gameover and created new @ 1")
-      //setTimeout(() => console.log("3sec is up @ 1"),3000);
     }
     document.getElementById("auto-btn").textContent = "Stop Auto";
     autoTimer = setInterval(() => {
@@ -495,20 +514,30 @@ function stopAutoPlay() {
 }
 
 function newGame(p0Count, p1Count) {
-stopAutoPlay();
-stones = { p0: p0Count, p1: p1Count };
-player = 0;
-root = null;
-gameTrajectory = new Array();
-document.getElementById("tree-container").innerHTML =
-'New game started. Click "AI Move (Step)" to inspect MCTS tree.';
-document.getElementById("tree-meta").textContent = "Awaiting search";
-renderAll();
+  stopAutoPlay();
+  stones = { p0: p0Count, p1: p1Count };
+  player = 0;
+  stats.winner = p0Count == p1Count? 1- player: player;
+  root = null;
+  gameTrajectory = new Array();
+  document.getElementById("tree-container").innerHTML =
+  'New game started. Click "AI Move (Step)" to inspect MCTS tree.';
+  document.getElementById("tree-meta").textContent = "Awaiting search";
+  renderAll();
+}
+
+function newGame1(){
+  const s0 = document.getElementById("pA").value;
+  const s1 = document.getElementById("pB").value;
+  newGame(s0, s1);
 }
 
 function newRandomGame() {
-  const s0 = Math.floor(Math.random() * 8) + 2;
-  const s1 = Math.floor(Math.random() * 8) + 2;
+  const a = document.getElementById("pA").value - STONES_MIN;
+  const b = document.getElementById("pB").value - STONES_MIN;
+
+  const s0 = Math.floor(Math.random() * a) + STONES_MIN;
+  const s1 = Math.floor(Math.random() * b) + STONES_MIN;
   newGame(s0, s1);
 }
 
@@ -525,8 +554,8 @@ function runTraining() {
 
     for (let ep = 0; ep < episodes; ep++) {
         stones = {
-          p0: Math.floor(Math.random() * 8) + 1,
-          p1: Math.floor(Math.random() * 8) + 1
+          p0: Math.floor(Math.random() * STONES_CAP) + 1,
+          p1: Math.floor(Math.random() * STONES_CAP) + 1
         };
         let p = 0;
         gameTrajectory = new Array();
@@ -563,6 +592,7 @@ function renderAll() {
   renderMLPInspector();
   document.getElementById("stat-p0").textContent = stats.p0.wins;
   document.getElementById("stat-p1").textContent = stats.p1.wins;
+  document.getElementById("stat-mis").textContent = stats.mis;
   document.getElementById("stat-sims").textContent = totalSims.toLocaleString();
 }
 
